@@ -148,6 +148,9 @@ class VisitController extends Controller
             'notes' => 'nullable|string',
             'nurse_notes' => 'nullable|string',
             'doctor_notes' => 'nullable|string',
+            'doctor_diagnosis' => 'nullable|string',
+            'doctor_started_at' => 'nullable|date',
+            'doctor_consultation_saved_at' => 'nullable|date',
             'lab_notes' => 'nullable|string',
             'status' => 'sometimes|in:Active,Completed',
             // Comprehensive medical history fields
@@ -178,6 +181,8 @@ class VisitController extends Controller
             'lab_completed_at' => 'sometimes|date',
             'pharmacy_completed_at' => 'sometimes|date',
             'billing_completed_at' => 'sometimes|date',
+            'lab_results_reviewed' => 'sometimes|boolean',
+            'lab_results_reviewed_at' => 'sometimes|date',
         ]);
 
         $visit->update($validated);

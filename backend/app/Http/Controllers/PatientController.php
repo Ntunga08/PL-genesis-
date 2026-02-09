@@ -25,6 +25,11 @@ class PatientController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Date range filtering for reports
+        if ($request->has('from') && $request->has('to')) {
+            $query->whereBetween('created_at', [$request->from, $request->to]);
+        }
+
         $patients = $query->orderBy('created_at', 'desc')
                          ->paginate($request->get('limit', 50));
 

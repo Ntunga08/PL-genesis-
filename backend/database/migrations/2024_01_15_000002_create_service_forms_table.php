@@ -15,11 +15,14 @@ return new class extends Migration
         if (!Schema::hasTable('service_forms')) {
             Schema::create('service_forms', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('visit_id')->constrained('visits')->onDelete('cascade');
-                $table->foreignId('patient_id')->constrained('patients')->onDelete('cascade');
+                $table->uuid('visit_id');
+                $table->foreign('visit_id')->references('id')->on('patient_visits')->onDelete('cascade');
+                $table->uuid('patient_id');
+                $table->foreign('patient_id')->references('id')->on('patients')->onDelete('cascade');
                 $table->string('service_id')->nullable(); // Reference to medical_services
                 $table->json('form_data');
-                $table->foreignId('completed_by')->constrained('users');
+                $table->uuid('completed_by');
+                $table->foreign('completed_by')->references('id')->on('users');
                 $table->timestamp('completed_at');
                 $table->timestamps();
                 

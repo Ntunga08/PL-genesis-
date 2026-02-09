@@ -29,6 +29,11 @@ class PrescriptionController extends Controller
             });
         }
 
+        // Date range filtering for reports
+        if ($request->has('from') && $request->has('to')) {
+            $query->whereBetween('prescription_date', [$request->from, $request->to]);
+        }
+
         $prescriptions = $query->orderBy('prescription_date', 'desc')
                               ->paginate($request->get('limit', 50));
 

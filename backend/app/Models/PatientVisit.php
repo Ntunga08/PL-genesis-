@@ -24,8 +24,9 @@ class PatientVisit extends Model
         'current_stage', 'overall_status',
         'reception_status', 'reception_completed_at',
         'nurse_status', 'nurse_completed_at', 'nurse_notes',
-        'doctor_status', 'doctor_completed_at',
-        'lab_status', 'lab_completed_at', 'lab_results_reviewed',
+        'doctor_status', 'doctor_completed_at', 'doctor_notes', 'doctor_diagnosis', 
+        'doctor_started_at', 'doctor_consultation_saved_at',
+        'lab_status', 'lab_completed_at', 'lab_results_reviewed', 'lab_results_reviewed_at',
         'pharmacy_status', 'pharmacy_completed_at',
         'billing_status', 'billing_completed_at'
     ];
@@ -36,9 +37,14 @@ class PatientVisit extends Model
         'reception_completed_at' => 'datetime',
         'nurse_completed_at' => 'datetime',
         'doctor_completed_at' => 'datetime',
+        'doctor_started_at' => 'datetime',
+        'doctor_consultation_saved_at' => 'datetime',
         'lab_completed_at' => 'datetime',
+        'lab_results_reviewed' => 'boolean',
+        'lab_results_reviewed_at' => 'datetime',
         'pharmacy_completed_at' => 'datetime',
         'billing_completed_at' => 'datetime',
+        'provisional_diagnosis_completed' => 'boolean',
     ];
 
     public function patient()

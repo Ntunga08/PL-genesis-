@@ -1366,9 +1366,23 @@ export default function DoctorDashboard() {
 
       setPendingVisits(updatedVisits);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving provisional diagnosis:', error);
-      toast.error('Failed to save provisional diagnosis');
+      
+      // Show detailed error message
+      const errorMessage = error?.response?.data?.message 
+        || error?.response?.data?.error
+        || error?.message 
+        || 'Failed to save provisional diagnosis';
+      
+      // Log validation errors if present
+      if (error?.response?.data?.errors) {
+        console.error('Validation errors:', error.response.data.errors);
+        const validationErrors = Object.values(error.response.data.errors).flat().join(', ');
+        toast.error(`Validation error: ${validationErrors}`);
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
