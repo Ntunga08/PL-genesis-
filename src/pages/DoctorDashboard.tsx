@@ -2973,7 +2973,24 @@ export default function DoctorDashboard() {
                       {(() => {
                         try {
                           // Parse vitals from nurse_notes (stored as JSON string)
-                          const vitals = visit.nurse_notes ? JSON.parse(visit.nurse_notes) : null;
+                          if (!visit.nurse_notes) {
+                            return <span className="text-xs text-muted-foreground">No vitals</span>;
+                          }
+                          
+                          // Check if it's already an object or needs parsing
+                          let vitals;
+                          if (typeof visit.nurse_notes === 'string') {
+                            // Only try to parse if it looks like JSON (starts with { or [)
+                            if (visit.nurse_notes.trim().startsWith('{') || visit.nurse_notes.trim().startsWith('[')) {
+                              vitals = JSON.parse(visit.nurse_notes);
+                            } else {
+                              // It's plain text, not JSON
+                              return <span className="text-xs text-muted-foreground">No vitals</span>;
+                            }
+                          } else {
+                            vitals = visit.nurse_notes;
+                          }
+                          
                           if (vitals && vitals.blood_pressure) {
                             return (
                               <div className="text-xs">
@@ -2985,7 +3002,8 @@ export default function DoctorDashboard() {
                             );
                           }
                         } catch (e) {
-                          console.error('Error parsing vitals:', e);
+                          // Silently handle parse errors - just show no vitals
+                          console.debug('Could not parse vitals from nurse_notes');
                         }
                         return <span className="text-xs text-muted-foreground">No vitals</span>;
                       })()}
@@ -3834,7 +3852,7 @@ export default function DoctorDashboard() {
 
       {/* Prescription Dialog */}
       <Dialog open={showPrescriptionDialog} onOpenChange={setShowPrescriptionDialog}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden">
+        <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Write Prescription</DialogTitle>
             <DialogDescription>
@@ -3842,7 +3860,7 @@ export default function DoctorDashboard() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex gap-4 h-[calc(95vh-120px)]">
+          <div className="flex gap-4 flex-1 overflow-hidden">
             {/* Left Panel - Patient Clinical Information */}
             <div className="w-1/2 border-r pr-4">
               <ScrollArea className="h-full">
@@ -4245,15 +4263,17 @@ export default function DoctorDashboard() {
           </div>
           
           {/* Dialog Footer */}
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
             <Button variant="outline" onClick={() => setShowPrescriptionDialog(false)}>
               Cancel
             </Button>
             <Button 
               onClick={submitPrescription}
               disabled={selectedMedications.length === 0}
+              className="bg-purple-600 hover:bg-purple-700"
             >
-              Write {selectedMedications.length} Prescription{selectedMedications.length !== 1 ? 's' : ''}
+              <Pill className="h-4 w-4 mr-2" />
+              Write {selectedMedications.length} Prescription{selectedMedications.length !== 1 ? 's' : ''} & Send to Pharmacy
             </Button>
           </div>
         </DialogContent>
