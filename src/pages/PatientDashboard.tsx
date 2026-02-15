@@ -30,13 +30,8 @@ export default function PatientDashboard() {
       // In a real system, you might want to fetch all patients or implement search
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching patient dashboard data:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
+
+
       toast.error(`Failed to load dashboard data: ${error.message}`);
     } finally {
       setLoading(false);
@@ -64,7 +59,7 @@ export default function PatientDashboard() {
         setAppointments([]);
       }
     } catch (error: any) {
-      console.error('Error searching patient:', error);
+
       toast.error('Error searching for patient');
     }
   };
@@ -75,7 +70,7 @@ export default function PatientDashboard() {
       // Sample data creation not needed with MySQL backend
       toast.info('Sample data feature not available');
     } catch (error) {
-      console.error('Error creating sample data:', error);
+
       toast.error('Failed to create sample data');
     }
   };

@@ -62,15 +62,15 @@ export const getSocket = (): Socket => {
     });
 
     socket.on('connect', () => {
-      console.log('✅ Socket connected');
+
     });
 
     socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
+
     });
 
     socket.on('connect_error', (error: Error) => {
-      console.error('Socket connection error:', error);
+
     });
   }
   return socket;

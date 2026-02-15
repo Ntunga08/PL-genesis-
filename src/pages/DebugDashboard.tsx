@@ -31,7 +31,7 @@ export default function DebugDashboard() {
       fetchDebugInfo();
       refreshRoles(); // Refresh the auth context roles
     } catch (error: any) {
-      console.error('Role assignment error:', error);
+
       toast.error(`Failed to assign ${role} role: ${error.response?.data?.error || error.message}`);
     } finally {
       setAssigningRole(false);
@@ -60,7 +60,7 @@ export default function DebugDashboard() {
         }
       });
     } catch (error: any) {
-      console.error('Debug error:', error);
+
       setDebugInfo({ error: error.message });
     }
   };
@@ -79,11 +79,11 @@ export default function DebugDashboard() {
 
       const { data } = await api.post('/patients', testPatient);
       toast.success('Test patient registered successfully!');
-      console.log('Test patient created:', data.patient);
+
       fetchDebugInfo();
     } catch (error: any) {
       toast.error(`Registration failed: ${error.response?.data?.message || error.message}`);
-      console.error('Patient registration error:', error);
+
     } finally {
       setTesting(false);
     }
@@ -119,11 +119,11 @@ export default function DebugDashboard() {
 
       const { data: visitResponse } = await api.post('/patient-visits', visitData);
       toast.success('Test patient visit created successfully!');
-      console.log('Test visit created:', visitResponse.visit);
+
       fetchDebugInfo();
     } catch (error: any) {
       toast.error(`Visit creation error: ${error.response?.data?.message || error.message}`);
-      console.error('Visit creation error:', error);
+
     } finally {
       setTesting(false);
     }

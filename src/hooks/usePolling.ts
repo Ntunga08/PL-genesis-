@@ -42,7 +42,7 @@ export function usePolling(
       try {
         await savedCallback.current();
       } catch (error) {
-        console.error('Polling error:', error);
+
         if (onError) {
           onError(error as Error);
         }
@@ -69,7 +69,7 @@ export function usePolling(
     try {
       await savedCallback.current();
     } catch (error) {
-      console.error('Manual poll error:', error);
+
       if (onError) {
         onError(error as Error);
       }

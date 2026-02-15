@@ -739,12 +739,6 @@ const BillingAnalysis = () => {
       const fromDate = format(startDate, 'yyyy-MM-dd');
       const toDate = format(endDate, 'yyyy-MM-dd');
 
-      console.log('🔍 Fetching billing data with params:', {
-        from: fromDate,
-        to: toDate,
-        timeFilter
-      });
-
       // Fetch payments (actual revenue) and invoices in parallel
       const [paymentsRes, invoicesRes] = await Promise.all([
         api.get('/payments', {
@@ -759,14 +753,14 @@ const BillingAnalysis = () => {
             'Pragma': 'no-cache'
           }
         }).catch((err) => {
-          console.error('❌ Error fetching payments:', err);
-          console.error('Params sent:', { from: startDate.toISOString(), to: endDate.toISOString() });
+
+
           return { data: { payments: [] } };
         }),
         api.get('/billing/invoices', {
           params: { limit: 1000 }
         }).catch((err) => {
-          console.error('❌ Error fetching invoices:', err);
+
           return { data: { invoices: [] } };
         })
       ]);
@@ -774,19 +768,10 @@ const BillingAnalysis = () => {
       const payments = paymentsRes.data.payments || [];
       const invoices = invoicesRes.data.invoices || [];
 
-      console.log('Admin Billing Stats Debug:', {
-        timeFilter,
-        dateRange: { from: fromDate, to: toDate },
-        paymentsReceived: payments.length,
-        samplePayments: payments.slice(0, 3).map(p => ({ amount: p.amount, date: p.payment_date, status: p.status }))
-      });
-
       // Calculate revenue from ALL completed payments in the period
       const totalRevenue = payments
         .filter(p => p.status === 'Completed')
         .reduce((sum, p) => sum + Number(p.amount || 0), 0);
-      
-      console.log('Total Revenue Calculated:', totalRevenue, 'from', payments.filter(p => p.status === 'Completed').length, 'completed payments');
 
       // Calculate unpaid amount from all invoices
       const unpaidAmount = invoices
@@ -808,7 +793,7 @@ const BillingAnalysis = () => {
 
       setRecentInvoices(invoices.slice(0, 10) || []);
     } catch (error) {
-      console.error('Error fetching billing data:', error);
+
       setBillingStats({
         totalRevenue: 0,
         unpaidAmount: 0,
@@ -1172,7 +1157,7 @@ export default function AdminDashboard() {
       
       setActivityLogs(logsWithUserInfo);
     } catch (error) {
-      console.error('Error fetching activity logs:', error);
+
       toast.error('Failed to load activity logs');
     } finally {
       setLogsLoading(false);
@@ -1187,14 +1172,12 @@ export default function AdminDashboard() {
       
       // Fetch settings from backend
       try {
-        console.log('🔄 Fetching settings from API...');
+
         const settingsRes = await api.get('/settings');
-        console.log('📦 Settings API response:', settingsRes.data);
-        
+
         // Backend returns settings as an array
         const settingsArray = settingsRes.data.settings || [];
-        console.log('📋 Settings array:', settingsArray);
-        
+
         // Start with defaults
         const settingsObj: any = {
           consultation_fee: '50000',
@@ -1209,22 +1192,22 @@ export default function AdminDashboard() {
         
         // Convert array to object, overwriting defaults
         if (Array.isArray(settingsArray) && settingsArray.length > 0) {
-          console.log(`✅ Processing ${settingsArray.length} settings...`);
+
           settingsArray.forEach((setting: any) => {
             if (setting && setting.key) {
-              console.log(`  - ${setting.key}: "${setting.value}"`);
+
               settingsObj[setting.key] = setting.value || '';
             }
           });
         } else {
-          console.warn('⚠️ Settings array is empty or not an array');
+
         }
         
         setSystemSettings(settingsObj);
-        console.log('✓ Settings loaded:', settingsObj);
+
       } catch (error) {
-        console.error('❌ Error fetching settings:', error);
-        console.warn('Settings not found, using defaults');
+
+
         // Use defaults if settings don't exist yet
         setSystemSettings({
           consultation_fee: '50000',
@@ -1247,13 +1230,13 @@ export default function AdminDashboard() {
           feesObj[fee.department_id] = fee.fee_amount.toString();
         });
         setDepartmentFees(feesObj);
-        console.log('✓ Department fees loaded:', feesObj);
+
       } catch (error) {
-        console.warn('No department fees found');
+
         setDepartmentFees({});
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+
       toast.error('Failed to load settings');
     }
   };
@@ -1266,7 +1249,7 @@ export default function AdminDashboard() {
         setLogoPreview(response.data.logo_url);
       }
     } catch (error) {
-      console.log('No custom logo set');
+
     }
   };
 
@@ -1317,7 +1300,7 @@ export default function AdminDashboard() {
       // Dispatch custom event to update logo everywhere without page reload
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: { logoUrl: logoPreview } }));
     } catch (error: any) {
-      console.error('Error uploading logo:', error);
+
       toast.error('Failed to upload logo');
     } finally {
       setUploadingLogo(false);
@@ -1336,49 +1319,46 @@ export default function AdminDashboard() {
           value: systemSettings[key]
         }));
 
-      console.log('💾 Saving settings:', settingsToSave);
       let created = 0;
       let updated = 0;
 
       for (const setting of settingsToSave) {
         try {
-          console.log(`Updating ${setting.key}:`, setting.value);
+
           await api.put(`/settings/${setting.key}`, { value: setting.value });
           updated++;
         } catch (error: any) {
           // If setting doesn't exist, create it
           if (error.response?.status === 404) {
-            console.log(`Creating ${setting.key}:`, setting.value);
+
             await api.post('/settings', { key: setting.key, value: setting.value });
             created++;
           } else {
-            console.error(`Error saving ${setting.key}:`, error);
+
             throw error;
           }
         }
       }
 
-      console.log(`✅ Settings saved: ${updated} updated, ${created} created`);
-      
       // Save department fees if any are set
       let feesSaved = 0;
       for (const [deptId, fee] of Object.entries(departmentFees)) {
         if (fee && fee.trim() !== '') {
           try {
-            console.log(`Saving department fee for ${deptId}:`, fee);
+
             await api.post('/departments/fees', {
               department_id: deptId,
               fee_amount: parseFloat(fee)
             });
             feesSaved++;
           } catch (error: any) {
-            console.error(`Error saving department fee for ${deptId}:`, error);
+
           }
         }
       }
       
       if (feesSaved > 0) {
-        console.log(`✅ Department fees saved: ${feesSaved}`);
+
       }
       
       toast.success(`Settings saved successfully (${updated} updated, ${created} created, ${feesSaved} dept fees)`);
@@ -1386,7 +1366,7 @@ export default function AdminDashboard() {
       await logActivity('settings.update', { settings: systemSettings, departmentFees });
       fetchSettings(); // Reload settings
     } catch (error) {
-      console.error('Error saving settings:', error);
+
       toast.error('Failed to save settings');
     } finally {
       setSavingSettings(false);
@@ -1424,7 +1404,7 @@ export default function AdminDashboard() {
       setShowDepartmentDialog(false);
       fetchSettings(); // Refresh departments list
     } catch (error: any) {
-      console.error('Error saving department:', error);
+
       toast.error(error.response?.data?.error || 'Failed to save department');
     }
   };
@@ -1439,7 +1419,7 @@ export default function AdminDashboard() {
       toast.success('Department deleted successfully');
       fetchSettings(); // Refresh departments list
     } catch (error: any) {
-      console.error('Error deleting department:', error);
+
       toast.error(error.response?.data?.error || 'Failed to delete department');
     }
   };
@@ -1452,21 +1432,17 @@ export default function AdminDashboard() {
       // Fetch all doctors
       const { data: usersData } = await api.get('/users');
       const allDoctors = usersData.users.filter((u: any) => u.role === 'doctor');
-      
-      console.log('All doctors:', allDoctors);
-      
+
       // Fetch doctors assigned to this department
       const { data: deptData } = await api.get(`/departments/${dept.id}/doctors`);
       const assignedDoctors = deptData.doctors || [];
       const assignedDoctorIds = assignedDoctors.map((d: any) => d.id);
-      
-      console.log('Assigned doctors:', assignedDoctors);
-      console.log('Assigned doctor IDs:', assignedDoctorIds);
-      
+
+
       setDepartmentDoctors(assignedDoctors);
       setAvailableDoctors(allDoctors.filter((d: any) => !assignedDoctorIds.includes(d.id)));
     } catch (error: any) {
-      console.error('Error fetching doctors:', error);
+
       toast.error('Failed to load doctors');
     }
   };
@@ -1482,7 +1458,7 @@ export default function AdminDashboard() {
       toast.success('Doctor assigned successfully');
       handleManageDoctors(selectedDepartment); // Refresh lists
     } catch (error: any) {
-      console.error('Error assigning doctor:', error);
+
       toast.error(error.response?.data?.error || 'Failed to assign doctor');
     }
   };
@@ -1498,7 +1474,7 @@ export default function AdminDashboard() {
       toast.success('Doctor removed successfully');
       handleManageDoctors(selectedDepartment); // Refresh lists
     } catch (error: any) {
-      console.error('Error removing doctor:', error);
+
       toast.error(error.response?.data?.error || 'Failed to remove doctor');
     }
   };
@@ -1518,8 +1494,6 @@ export default function AdminDashboard() {
       const { data: usersResponse } = await api.get('/users');
       const usersData = usersResponse.users || [];
 
-      console.log('Fetched users data:', usersData);
-
       // Users from API already include roles
       const usersWithRoles = usersData.map((user: any) => ({
         ...user,
@@ -1527,8 +1501,6 @@ export default function AdminDashboard() {
         roles: user.roles || [],
         activeRole: user.role || user.primaryRole || user.roles?.[0] || 'No role assigned'
       }));
-
-      console.log('Users with roles:', usersWithRoles);
 
       // Fetch appointments from MySQL API
       const { data: appointmentsResponse } = await api.get('/appointments');
@@ -1540,7 +1512,7 @@ export default function AdminDashboard() {
         const { data: prescriptionsResponse } = await api.get('/prescriptions');
         prescriptionsData = prescriptionsResponse.prescriptions || [];
       } catch (error) {
-        console.warn('Could not fetch prescriptions:', error);
+
       }
 
       // Fetch medical services from MySQL API
@@ -1549,7 +1521,7 @@ export default function AdminDashboard() {
         const { data: servicesResponse } = await api.get('/services');
         servicesData = servicesResponse.services || [];
       } catch (error) {
-        console.warn('Could not fetch medical services:', error);
+
       }
 
       // Calculate stats from the data we have
@@ -1573,11 +1545,7 @@ export default function AdminDashboard() {
       });
       
     } catch (error: any) {
-      console.error('Error fetching admin data:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data
-      });
+
 
       // Set empty data to prevent crashes
       setPatients([]);
@@ -1621,7 +1589,7 @@ export default function AdminDashboard() {
         fetchData();
       }
     } catch (error: any) {
-      console.error('Error creating patient:', error);
+
       toast.error(error.response?.data?.error || 'Failed to add patient');
     }
   };
@@ -1631,7 +1599,7 @@ export default function AdminDashboard() {
       // Role management not yet implemented in backend
       toast.info('Role management will be available soon');
     } catch (error) {
-      console.error('Error updating primary role:', error);
+
       toast.error('Failed to update primary role');
     }
   };
@@ -1668,7 +1636,7 @@ export default function AdminDashboard() {
       });
       fetchData(); // Refresh data
     } catch (error: any) {
-      console.error('Error adding service:', error);
+
       toast.error(error.response?.data?.error || 'Failed to add medical service');
     }
   };
@@ -1706,7 +1674,7 @@ export default function AdminDashboard() {
       });
       fetchData(); // Refresh data
     } catch (error: any) {
-      console.error('Error updating service:', error);
+
       toast.error(error.response?.data?.error || 'Failed to update medical service');
     }
   };
@@ -1721,7 +1689,7 @@ export default function AdminDashboard() {
       toast.success('Medical service deleted successfully');
       fetchData(); // Refresh data
     } catch (error: any) {
-      console.error('Error deleting service:', error);
+
       toast.error(error.response?.data?.error || 'Failed to delete medical service');
     }
   };
@@ -1764,9 +1732,7 @@ export default function AdminDashboard() {
         toast.error('Please enter the user\'s full name');
         return;
       }
-      
-      console.log('Creating user with email:', email);
-      
+
       // Create user via auth/register endpoint
       const { data } = await api.post('/auth/register', {
         email: email,
@@ -1791,9 +1757,8 @@ export default function AdminDashboard() {
         setTimeout(() => fetchData(), 500);
       }
     } catch (error: any) {
-      console.error('Error creating user:', error);
-      console.error('Error response:', error.response?.data);
-      
+
+
       // Provide more helpful error messages
       const errorData = error.response?.data;
       const errorMessage = errorData?.message || errorData?.error || error.message;
@@ -1804,7 +1769,7 @@ export default function AdminDashboard() {
         const errorMessages = Object.entries(validationErrors)
           .map(([field, messages]: [string, any]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
           .join('\n');
-        console.error('Validation errors:', errorMessages);
+
         toast.error(`Validation failed:\n${errorMessages}`);
       } else if (errorMessage?.includes('already')) {
         toast.error('A user with this email already exists');
@@ -1855,7 +1820,7 @@ export default function AdminDashboard() {
         fetchData();
       }
     } catch (error: any) {
-      console.error('Error updating user:', error);
+
       toast.error(error.response?.data?.error || 'Failed to update user');
     }
   };
@@ -1875,7 +1840,7 @@ export default function AdminDashboard() {
       // Refresh data to show updated status
       fetchData();
     } catch (error: any) {
-      console.error('Error deactivating user:', error);
+
       toast.error(error.response?.data?.error || 'Failed to deactivate user');
     }
   };
@@ -1895,7 +1860,7 @@ export default function AdminDashboard() {
       // Refresh data to show updated status
       fetchData();
     } catch (error: any) {
-      console.error('Error activating user:', error);
+
       toast.error(error.response?.data?.error || 'Failed to activate user');
     }
   };
@@ -1935,7 +1900,7 @@ export default function AdminDashboard() {
       // Refresh users list
       fetchData();
     } catch (error) {
-      console.error('Error assigning role:', error);
+
       const message = (error as { message?: string })?.message || 'Failed to assign role';
       toast.error(message);
     }
@@ -2019,7 +1984,7 @@ export default function AdminDashboard() {
       setImportPreview([]);
       fetchData(); // Refresh data
     } catch (err: any) {
-      console.error('CSV import error:', err);
+
       setImportError(err.response?.data?.error || err?.message || 'Failed to import CSV');
     } finally {
       setImporting(false);
@@ -2087,7 +2052,7 @@ export default function AdminDashboard() {
       
       setPatientRecords(allRecords);
     } catch (error) {
-      console.error('Error fetching patient records:', error);
+
       toast.error('Failed to load patient records');
       setPatientRecords([]);
     } finally {
@@ -2103,7 +2068,7 @@ export default function AdminDashboard() {
       });
       setPatientAppointments(data.appointments || []);
     } catch (error) {
-      console.error('Error fetching patient appointments:', error);
+
       toast.error('Failed to load patient appointments');
     }
   };

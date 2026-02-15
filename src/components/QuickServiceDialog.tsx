@@ -80,7 +80,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
         const response = await api.get(`/patients?search=${encodeURIComponent(patientSearchTerm)}&limit=10`);
         setSearchResults(response.data.patients || []);
       } catch (error) {
-        console.error('Error searching patients:', error);
+
         setSearchResults([]);
       }
     };
@@ -108,61 +108,48 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
   const addToCart = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    
-    console.log('🛒 Add to cart clicked!', { 
-      selectedService, 
-      quantity, 
-      servicesCount: services.length,
-      cartLength: serviceCart.length 
-    });
-    
+
     if (!selectedService) {
-      console.log('❌ No service selected');
+
       toast.error('Please select a service');
       return;
     }
     
     const service = services.find(s => String(s.id) === String(selectedService));
-    console.log('🔍 Service lookup:', { 
-      service, 
-      selectedService, 
-      allServices: services.map(s => ({id: s.id, name: s.service_name})) 
-    });
-    
+
     if (!service) {
-      console.log('❌ Service not found in services array');
+
       toast.error('Service not found');
       return;
     }
     
     // Check if service already in cart
     const existingIndex = serviceCart.findIndex(item => String(item.service.id) === String(selectedService));
-    console.log('🔍 Existing cart check:', { existingIndex, cartItems: serviceCart.length });
-    
+
     if (existingIndex >= 0) {
       // Update quantity
       const updated = [...serviceCart];
       updated[existingIndex].quantity += quantity;
-      console.log('📝 Updating existing service quantity:', updated);
+
       setServiceCart(updated);
       toast.success(`Updated ${service.service_name} quantity`);
     } else {
       // Add new service
       const newCart = [...serviceCart, { service, quantity }];
-      console.log('➕ Adding new service to cart:', newCart);
+
       setServiceCart(newCart);
       toast.success(`Added ${service.service_name} to cart`);
     }
     
     // Reset selection
-    console.log('🔄 Resetting selection');
+
     setSelectedService('');
     setQuantity(1);
   };
 
   // Remove service from cart
   const removeFromCart = (serviceId: string) => {
-    console.log('🗑️ Removing from cart:', serviceId);
+
     setServiceCart(serviceCart.filter(item => String(item.service.id) !== String(serviceId)));
   };
 
@@ -170,10 +157,10 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
   const calculateTotal = () => {
     const total = serviceCart.reduce((total, item) => {
       const itemTotal = item.service.base_price * item.quantity;
-      console.log('💰 Cart item:', item.service.service_name, 'Price:', item.service.base_price, 'Qty:', item.quantity, 'Total:', itemTotal);
+
       return total + itemTotal;
     }, 0);
-    console.log('💰 Cart total:', total, 'Cart items:', serviceCart.length);
+
     return total;
   };
 
@@ -185,9 +172,9 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
       // Quick service can handle ALL service types - patient will be routed to correct department
       const activeServices = response.data.services.filter((s: any) => s.is_active);
       setServices(activeServices);
-      console.log('Loaded quick services:', activeServices.length, activeServices);
+
     } catch (error) {
-      console.error('Error fetching services:', error);
+
       toast.error('Failed to load services');
     } finally {
       setLoading(false);
@@ -430,7 +417,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
       // Reset form
       resetForm();
     } catch (error: any) {
-      console.error('Error assigning service:', error);
+
       toast.error(error.response?.data?.error || 'Failed to assign service');
     } finally {
       setSubmitting(false);
@@ -471,7 +458,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
       resetForm();
       
     } catch (error: any) {
-      console.error('Error saving service form:', error);
+
       toast.error(error.response?.data?.error || 'Failed to save service form');
     } finally {
       setFormSubmitting(false);
@@ -724,7 +711,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
                           key={service.id}
                           className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                           onClick={() => {
-                            console.log('Service selected:', service.id);
+
                             setSelectedService(String(service.id));
                             setServiceSearchTerm(service.service_name);
                             setShowServiceDropdown(false);
@@ -798,7 +785,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
                   type="button"
                   variant="outline"
                   onClick={(e) => {
-                    console.log('🖱️ Button clicked!');
+
                     addToCart(e);
                   }}
                   disabled={!selectedService}

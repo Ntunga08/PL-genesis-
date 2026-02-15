@@ -171,7 +171,7 @@ export function MultiplePrescriptionDialog({
       resetForm();
       onSuccess();
     } catch (error: any) {
-      console.error('Error creating prescriptions:', error);
+
       toast.error(`Failed to create prescriptions: ${error.message}`);
     } finally {
       setLoading(false);

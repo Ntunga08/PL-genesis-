@@ -31,8 +31,7 @@ interface ActivityLog {
 }
 
 export default function ActivityLogsView() {
-  console.log('🔍 ActivityLogsView component mounted');
-  
+
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
@@ -53,7 +52,7 @@ export default function ActivityLogsView() {
   });
 
   useEffect(() => {
-    console.log('🔄 useEffect triggered, dateFilter:', dateFilter);
+
     fetchLogs();
     fetchUsers();
   }, [dateFilter]);
@@ -63,7 +62,7 @@ export default function ActivityLogsView() {
       const { data } = await api.get('/users');
       setUsers(data.users || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
+
       toast.error('Failed to load users');
     }
   };
@@ -105,15 +104,7 @@ export default function ActivityLogsView() {
     setLogs([]); // Clear existing logs before fetching new ones
     try {
       const { start, end } = getDateRange();
-      
-      console.log('📅 Fetching logs with date range:', { 
-        filter: dateFilter, 
-        start: start.toISOString(), 
-        end: end.toISOString(),
-        startLocal: start.toString(),
-        endLocal: end.toString()
-      });
-      
+
       // Fetch activity logs from MySQL API with date filtering
       const params: any = {
         limit: 1000,
@@ -125,20 +116,18 @@ export default function ActivityLogsView() {
         params.from = start.toISOString();
         params.to = end.toISOString();
       }
-      
-      console.log('🔍 API Request params:', params);
+
       const { data } = await api.get('/activity', { params });
-      console.log('✅ API Response - Total logs received:', data.logs?.length || 0);
+
       if (data.logs && data.logs.length > 0) {
-        console.log('📊 First log date:', data.logs[0].created_at);
-        console.log('📊 Last log date:', data.logs[data.logs.length - 1].created_at);
+
+
       }
 
       const logsData = data.logs || [];
-      console.log('Fetched logs count:', logsData.length);
-      console.log('First log:', logsData[0]);
-      console.log('First log user:', logsData[0]?.user);
-      
+
+
+
       // Logs already include user info from the backend in the 'user' relationship
       // No need to enrich - just use the data as-is from the API
       setLogs(logsData);
@@ -179,8 +168,6 @@ export default function ActivityLogsView() {
       const monthCount = monthRes.status === 'fulfilled' ? (monthRes.value.data.logs?.length || 0) : 0;
       const totalCount = allRes.status === 'fulfilled' ? (allRes.value.data.logs?.length || 0) : 0;
 
-      console.log('📊 Stats calculated:', { todayCount, weekCount, monthCount, totalCount });
-
       setStats({
         today: todayCount,
         thisWeek: weekCount,
@@ -189,12 +176,12 @@ export default function ActivityLogsView() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching logs:', error);
+
       toast.error('Failed to load activity logs');
       setLogs([]); // Ensure logs are empty on error
     } finally {
       setLoading(false);
-      console.log('✅ Fetch complete, loading set to false');
+
     }
   };
 

@@ -58,11 +58,10 @@ export function PatientMedicalHistory({ open, onOpenChange, patient }: PatientMe
 
   const fetchMedicalHistory = async () => {
     if (!patient?.id) {
-      console.log('❌ No patient ID provided');
+
       return;
     }
-    
-    console.log('🔍 Fetching medical history for patient:', patient.id);
+
     setLoading(true);
     try {
       // Fetch all medical history data in parallel
@@ -72,9 +71,7 @@ export function PatientMedicalHistory({ open, onOpenChange, patient }: PatientMe
         api.get(`/prescriptions?patient_id=${patient.id}&limit=100`)
       ]);
 
-      console.log('📋 Visits response:', visitsRes.data);
-      console.log('🔬 Lab tests response:', labTestsRes.data);
-      console.log('💊 Prescriptions response:', prescriptionsRes.data);
+
 
       // Process visits and extract diagnoses
       const visits = visitsRes.data.visits || [];
@@ -94,16 +91,9 @@ export function PatientMedicalHistory({ open, onOpenChange, patient }: PatientMe
       // Process prescriptions - they should already include items from the API
       const prescriptions = prescriptionsRes.data.prescriptions || [];
 
-      console.log('📊 Processed data:', {
-        visits: visits.length,
-        labTests: labTests.length,
-        prescriptions: prescriptions.length,
-        diagnoses: diagnoses.length
-      });
-
       // Log prescription structure for debugging
       if (prescriptions.length > 0) {
-        console.log('🔍 First prescription structure:', prescriptions[0]);
+
       }
 
       setHistoryData({
@@ -115,7 +105,7 @@ export function PatientMedicalHistory({ open, onOpenChange, patient }: PatientMe
       });
 
     } catch (error) {
-      console.error('Error fetching medical history:', error);
+
       toast.error('Failed to load medical history');
     } finally {
       setLoading(false);

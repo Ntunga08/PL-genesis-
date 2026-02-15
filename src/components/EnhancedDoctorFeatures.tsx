@@ -28,7 +28,7 @@ export const EnhancedDoctorFeatures = ({ patients, onSuccess, labResults = [] }:
       // Medications not yet implemented in backend
       setMedications([]);
     } catch (error) {
-      console.error('Error fetching medications:', error);
+
       setMedications([]);
     }
   };
@@ -58,7 +58,7 @@ export const EnhancedDoctorFeatures = ({ patients, onSuccess, labResults = [] }:
       setPrescriptionDialogOpen(false);
       onSuccess();
     } catch (error: any) {
-      console.error('Error creating prescription:', error);
+
       toast.error(error.response?.data?.error || 'Failed to create prescription');
     }
   };
@@ -87,7 +87,7 @@ export const EnhancedDoctorFeatures = ({ patients, onSuccess, labResults = [] }:
       e.currentTarget.reset();
       onSuccess();
     } catch (error: any) {
-      console.error('Error ordering lab test:', error);
+
       toast.error(error.response?.data?.error || 'Failed to order lab test');
     }
   };
@@ -103,7 +103,7 @@ export const EnhancedDoctorFeatures = ({ patients, onSuccess, labResults = [] }:
       toast.info('Visit workflow will be available soon');
       onSuccess();
     } catch (error) {
-      console.error('Error completing consultation:', error);
+
       toast.error('Failed to complete consultation');
     }
   };

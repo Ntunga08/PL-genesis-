@@ -62,7 +62,7 @@ export function BillingStatusBadge({ patientId, showDetails = false, className =
         status
       });
     } catch (error) {
-      console.error('Error fetching billing status:', error);
+
       setBillingInfo(null);
     } finally {
       setLoading(false);

@@ -37,7 +37,7 @@ export default function LowStockInventoryReport() {
       const response = await api.get('/pharmacy/medications');
       setMedications(response.data.medications || []);
     } catch (error) {
-      console.error('Error fetching medications:', error);
+
       toast.error('Failed to load medications');
     } finally {
       setLoading(false);

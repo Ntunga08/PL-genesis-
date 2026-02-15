@@ -41,7 +41,7 @@ const Logo: React.FC<LogoProps> = React.memo(({ size = 'md', showText = true, cl
       } catch (error) {
         // Silently fail - use default logo
         if (isMounted) {
-          console.log('Using default logo');
+
         }
       }
     };

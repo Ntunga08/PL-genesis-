@@ -34,7 +34,7 @@ export function AppointmentsPollingExample() {
     showErrorToast: false, // Don't show toast on error
     transform: (response) => response.appointments || [], // Transform response
     onSuccess: (data) => {
-      console.log(`Fetched ${data.length} appointments`);
+
     }
   });
 

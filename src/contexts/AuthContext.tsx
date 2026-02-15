@@ -50,15 +50,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const checkSession = async () => {
       try {
-        console.log('Checking for existing session...');
+
         const token = localStorage.getItem('auth_token');
-        console.log('Auth token found:', !!token);
-        
+
         if (!isMounted) return; // Prevent state updates if unmounted
         
         if (token) {
           try {
-            console.log('Verifying token and fetching user profile...');
+
             // Verify token and get user profile with timeout
             const { data } = await Promise.race([
               api.get('/auth/me'),
@@ -66,16 +65,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setTimeout(() => reject(new Error('Request timeout - backend not responding')), 5000)
               )
             ]) as any;
-            
-            console.log('User profile data received:', data);
-            
+
             if (data && data.user) {
               // Normalize the role name to handle backend inconsistencies
               const userRole = normalizeRole(data.user.role);
-              
-              console.log('Original role from backend:', data.user.role);
-              console.log('Normalized role:', userRole);
-              
+
+
               const user: User = {
                 id: data.user.id,
                 email: data.user.email,
@@ -99,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setRolesLoaded(true);
             } else {
               // Invalid token
-              console.log('Invalid token, removing from localStorage');
+
               localStorage.removeItem('auth_token');
               setUser(null);
               setSession(null);
@@ -108,15 +103,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setRolesLoaded(true);
             }
           } catch (error: any) {
-            console.error('Session check failed:', error);
-            console.error('Error message:', error.message);
-            
+
+
             // Don't remove token on network errors, only on auth errors
             if (error.response?.status === 401 || error.response?.status === 403) {
-              console.log('Auth error, removing token');
+
               localStorage.removeItem('auth_token');
             } else {
-              console.log('Network/timeout error, keeping token for retry');
+
             }
             
             setUser(null);
@@ -126,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setRolesLoaded(true);
           }
         } else {
-          console.log('No auth token found, setting rolesLoaded to true');
+
           setUser(null);
           setSession(null);
           setRoles([]);
@@ -134,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRolesLoaded(true);
         }
       } catch (error) {
-        console.error('Unexpected error in checkSession:', error);
+
         // Ensure state is always set even on unexpected errors
         setUser(null);
         setSession(null);
@@ -143,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRolesLoaded(true);
       } finally {
         // Always set loading to false, no matter what
-        console.log('Setting loading to false');
+
         setLoading(false);
       }
     };
@@ -158,15 +152,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Attempting login with email:', email);
-      
+
       const { data } = await api.post('/auth/login', {
         email,
         password,
       });
-      
-      console.log('Login response:', data);
-      
+
       if (data && data.token) {
         // Store token
         localStorage.setItem('auth_token', data.token);
@@ -174,10 +165,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Laravel returns 'role' (singular) and 'name', not 'roles' and 'full_name'
         // Normalize the role name to handle backend inconsistencies
         const userRole = normalizeRole(data.user.role);
-        
-        console.log('Original role from backend:', data.user.role);
-        console.log('Normalized role:', userRole);
-        
+
+
         // Set user and session
         const user: User = {
           id: data.user.id,
@@ -200,18 +189,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRoles([userRole]);
         setPrimaryRole(userRole);
         setRolesLoaded(true);
-        
-        console.log('Login successful, user:', user);
-        console.log('User role set to:', userRole);
+
+
         return { error: null };
       }
-      
-      console.log('Login failed: no token in response');
+
       return { error: { message: 'Login failed' } };
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
+
+
+
       setRolesLoaded(true); // Ensure rolesLoaded is set even on error
       return { 
         error: { 
@@ -236,7 +223,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       return { error: { message: 'Registration failed' } };
     } catch (error: any) {
-      console.error('Sign up error:', error);
+
       return { 
         error: { 
           message: error.response?.data?.message || 'Registration failed' 
@@ -261,7 +248,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         navigate('/auth');
       }
     } catch (error) {
-      console.error('Error during sign out:', error);
+
       // Force redirect even if there's an error
       window.location.href = '/auth';
     }
@@ -275,12 +262,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (data && data.user) {
           // Normalize the role name
           const userRole = normalizeRole(data.user.role);
-          console.log('Refreshed role - Original:', data.user.role, 'Normalized:', userRole);
+
           setRoles([userRole]);
           setPrimaryRole(userRole);
         }
       } catch (error) {
-        console.error('Failed to refresh roles:', error);
+
       }
     }
   };

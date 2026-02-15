@@ -96,7 +96,7 @@ class ZenoPayService {
         message: 'Payment initiated successfully',
       };
     } catch (error) {
-      console.error('ZenoPay initiation error:', error);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
@@ -142,7 +142,7 @@ class ZenoPayService {
         message: data.message,
       };
     } catch (error) {
-      console.error('ZenoPay verification error:', error);
+
       return {
         success: false,
         status: 'failed',
@@ -185,7 +185,7 @@ class ZenoPayService {
         message: data.message,
       };
     } catch (error) {
-      console.error('ZenoPay status check error:', error);
+
       throw error;
     }
   }
@@ -225,7 +225,7 @@ class ZenoPayService {
         message: 'Refund processed successfully',
       };
     } catch (error) {
-      console.error('ZenoPay refund error:', error);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',

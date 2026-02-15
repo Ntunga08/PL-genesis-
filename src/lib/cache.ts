@@ -24,7 +24,7 @@ class CacheManager {
       };
       localStorage.setItem(this.prefix + key, JSON.stringify(cacheItem));
     } catch (error) {
-      console.warn('Cache set failed:', error);
+
     }
   }
 
@@ -49,7 +49,7 @@ class CacheManager {
 
       return cacheItem.data;
     } catch (error) {
-      console.warn('Cache get failed:', error);
+
       return null;
     }
   }
@@ -68,7 +68,7 @@ class CacheManager {
     try {
       localStorage.removeItem(this.prefix + key);
     } catch (error) {
-      console.warn('Cache remove failed:', error);
+
     }
   }
 
@@ -84,7 +84,7 @@ class CacheManager {
         }
       });
     } catch (error) {
-      console.warn('Cache clear failed:', error);
+
     }
   }
 
@@ -128,27 +128,26 @@ export async function fetchWithCache<T>(
 
   // If cache exists and is fresh, return it
   if (cached && cacheAge !== null && cacheAge < staleTime) {
-    console.log(`📦 Using fresh cache for: ${key} (age: ${Math.round(cacheAge / 1000)}s)`);
+
     return cached;
   }
 
   // If cache exists but stale, return it and fetch in background
   if (cached && cacheAge !== null && cacheAge < cacheTime) {
-    console.log(`📦 Using stale cache for: ${key}, fetching fresh data...`);
-    
+
     // Fetch fresh data in background
     fetchFn().then(freshData => {
       cache.set(key, freshData, cacheTime);
-      console.log(`✅ Updated cache for: ${key}`);
+
     }).catch(error => {
-      console.warn(`Failed to update cache for: ${key}`, error);
+
     });
 
     return cached;
   }
 
   // No cache or expired, fetch fresh data
-  console.log(`🔄 Fetching fresh data for: ${key}`);
+
   const freshData = await fetchFn();
   cache.set(key, freshData, cacheTime);
   return freshData;
@@ -170,5 +169,5 @@ export function invalidateCache(keyOrPattern: string): void {
   } else {
     cache.remove(keyOrPattern);
   }
-  console.log(`🗑️ Invalidated cache: ${keyOrPattern}`);
+
 }

@@ -287,14 +287,6 @@ export default function BillingDashboard() {
         }
       });
     }
-    
-    console.log('Today Revenue Calculation:', {
-      today,
-      totalPayments: rawPaymentsData?.length || 0,
-      todayPayments: todayPaymentsDebug.length,
-      todayRevenue: totalRevenue,
-      sampleTodayPayments: todayPaymentsDebug.slice(0, 5)
-    });
 
     const pendingClaims: number = rawClaimsData?.filter(c => c.status === 'Pending').length || 0;
 
@@ -305,16 +297,6 @@ export default function BillingDashboard() {
         : new Date(p.created_at).toISOString().split('T')[0];
       return pDate === today;
     }).length || 0;
-    
-    console.log('Billing Stats:', {
-      date: today,
-      todayRevenue: totalRevenue,
-      todayPayments: todayPaymentsCount,
-      unpaidInvoices: unpaid,
-      partiallyPaidInvoices: partiallyPaid,
-      pendingClaims,
-      totalPatients: processedPatients.length
-    });
 
     return { unpaid, partiallyPaid, totalRevenue, pendingClaims, todayRevenue: totalRevenue };
   }, [processedPatients, rawClaimsData, rawPaymentsData]);
@@ -374,27 +356,18 @@ export default function BillingDashboard() {
       const claimsData = claimsRes.data.claims || [];
       const paymentsData = paymentsRes.data.payments || [];
       const servicesData = servicesRes.data.services || [];
-      
-      console.log('📊 Billing data fetched:', {
-        billingVisits: billingVisitsData.length,
-        services: servicesData.length,
-        invoices: invoicesData.length,
-        patients: patientsData.length
-      });
 
       // Filter visits to only include those with patient services (medications, lab tests, etc.)
       const visitsWithServices = combinedVisitsData.filter(visit => {
         const hasServices = servicesData.some((service: any) => service.patient_id === visit.patient_id);
         return hasServices;
       });
-      
-      console.log('🏥 Billing Dashboard Debug:');
-      console.log('- Billing visits:', billingVisitsData.length);
-      console.log('- Pharmacy visits:', pharmacyVisitsData.length);
-      console.log('- Combined visits:', combinedVisitsData.length);
-      console.log('- Patient services:', servicesData.length);
-      console.log('- Visits with services:', visitsWithServices.length);
-      
+
+
+
+
+
+
       // Update raw data state to trigger memoized computations
       setBillingVisits(visitsWithServices);
       setRawInvoicesData(invoicesData);
@@ -432,20 +405,11 @@ export default function BillingDashboard() {
       }
       
       setPatientCosts(costs);
-      
-      console.log('Patient costs calculated (medications + lab tests only):', costs);
 
       // Update other state with safety checks
       setPatients(patientsData);
       setInsuranceCompanies(insuranceData);
       setInsuranceClaims(claimsData);
-
-      console.log('Billing Dashboard - Data loaded:', {
-        invoices: invoicesData.length,
-        patients: patientsData.length,
-        insuranceCompanies: insuranceData.length,
-        claims: claimsData.length
-      });
 
       // Fetch hospital settings
       try {
@@ -472,11 +436,11 @@ export default function BillingDashboard() {
           setLogoUrl(logoRes.data.logo_url);
         }
       } catch (error) {
-        console.log('Hospital settings not configured yet');
+
       }
 
     } catch (error) {
-      console.error('Error fetching data:', error);
+
       toast.error('Failed to load billing data');
     } finally {
       setLoading(false);
@@ -490,7 +454,7 @@ export default function BillingDashboard() {
       const payments = response.data.payments || [];
       setInvoicePayments(payments);
     } catch (error) {
-      console.error('Error fetching invoice payments:', error);
+
       setInvoicePayments([]);
     }
   };
@@ -948,7 +912,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Pending Invoices Report with Details');
     } catch (error) {
-      console.error('Error generating pending invoices report:', error);
+
       toast.error('Failed to generate pending invoices report');
     }
   };
@@ -1042,7 +1006,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Paid Invoices Report with Details');
     } catch (error) {
-      console.error('Error generating paid invoices report:', error);
+
       toast.error('Failed to generate paid invoices report');
     }
   };
@@ -1160,7 +1124,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Detailed Invoice Report');
     } catch (error) {
-      console.error('Error generating detailed invoice report:', error);
+
       toast.error('Failed to generate detailed invoice report');
     }
   };
@@ -1396,7 +1360,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Comprehensive Billing Report with Details');
     } catch (error) {
-      console.error('Error generating comprehensive billing report:', error);
+
       toast.error('Failed to generate comprehensive billing report');
     }
   };
@@ -1470,7 +1434,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Patient List Report');
     } catch (error) {
-      console.error('Error fetching patients for report:', error);
+
       toast.error('Failed to generate patient list report');
     }
   };
@@ -1496,15 +1460,7 @@ export default function BillingDashboard() {
       const allLabTests = labTestsResponse.data.labTests || [];
       const allMedications = medicationsResponse.data.medications || [];
       const allPrescriptionItems = prescriptionItemsResponse.data.prescription_items || [];
-      
-      console.log('Medical History Report Data:', {
-        visits: allVisits.length,
-        prescriptions: allPrescriptions.length,
-        labTests: allLabTests.length,
-        medications: allMedications.length,
-        prescriptionItems: allPrescriptionItems.length
-      });
-      
+
       const printContent = `
         <html>
           <head>
@@ -1736,7 +1692,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Medical History Report');
     } catch (error) {
-      console.error('Error fetching medical history for report:', error);
+
       toast.error('Failed to generate medical history report');
     }
   };
@@ -1860,7 +1816,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Pharmacy Inventory Report');
     } catch (error) {
-      console.error('Error fetching pharmacy inventory for report:', error);
+
       toast.error('Failed to generate pharmacy inventory report');
     }
   };
@@ -1872,13 +1828,6 @@ export default function BillingDashboard() {
         toast.error('Invalid patient selected for report');
         return;
       }
-
-      console.log('Generating report for patient:', {
-        id: patient.id,
-        name: patient.full_name,
-        phone: patient.phone,
-        dateRange: fromDate && toDate ? `${fromDate} to ${toDate}` : 'All dates'
-      });
 
       // Build API URLs with date filters if provided
       const buildDateQuery = (baseUrl: string) => {
@@ -1914,16 +1863,6 @@ export default function BillingDashboard() {
       );
 
       // Log data counts for verification
-      console.log('Patient report data:', {
-        patientId: patient.id,
-        visits: patientVisits.length,
-        prescriptions: patientPrescriptions.length,
-        labTests: patientLabTests.length,
-        payments: patientPayments.length,
-        invoices: patientInvoices.length,
-        medications: allMedications.length,
-        prescriptionItems: patientPrescriptionItems.length
-      });
 
       // Verify data belongs to correct patient
       const invalidVisits = patientVisits.filter(v => v.patient_id !== patient.id);
@@ -1931,11 +1870,7 @@ export default function BillingDashboard() {
       const invalidInvoices = patientInvoices.filter(i => i.patient_id !== patient.id);
       
       if (invalidVisits.length > 0 || invalidPayments.length > 0 || invalidInvoices.length > 0) {
-        console.warn('Found data for wrong patient:', {
-          invalidVisits: invalidVisits.length,
-          invalidPayments: invalidPayments.length,
-          invalidInvoices: invalidInvoices.length
-        });
+
       }
       
       // Calculate totals
@@ -2218,7 +2153,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, `Patient Report - ${patient.full_name}`);
     } catch (error) {
-      console.error('Error generating patient report:', error);
+
       toast.error('Failed to generate patient report');
     }
   };
@@ -2230,12 +2165,6 @@ export default function BillingDashboard() {
         toast.error('Invalid patient selected for medical report');
         return;
       }
-
-      console.log('Generating medical report for patient:', {
-        id: patient.id,
-        name: patient.full_name,
-        dateRange: fromDate && toDate ? `${fromDate} to ${toDate}` : 'All dates'
-      });
 
       // Build API URLs with date filters if provided
       const buildDateQuery = (baseUrl: string) => {
@@ -2256,55 +2185,13 @@ export default function BillingDashboard() {
       const patientPrescriptions = prescriptionsResponse.data.prescriptions || [];
       const patientLabTests = labTestsResponse.data.labTests || [];
 
-      console.log('📋 Medical Report Data:', {
-        patient: {
-          id: patient.id,
-          name: patient.full_name
-        },
-        visits: patientVisits.length,
-        prescriptions: {
-          total: patientPrescriptions.length,
-          withItems: patientPrescriptions.filter(p => p.items && p.items.length > 0).length,
-          samplePrescription: patientPrescriptions[0] ? {
-            id: patientPrescriptions[0].id,
-            hasItems: !!patientPrescriptions[0].items,
-            itemsCount: patientPrescriptions[0].items?.length || 0,
-            sampleItem: patientPrescriptions[0].items?.[0],
-            hasMedications: !!patientPrescriptions[0].medications,
-            medicationsCount: patientPrescriptions[0].medications?.length || 0,
-            fullPrescription: patientPrescriptions[0]
-          } : null
-        },
-        labTests: {
-          total: patientLabTests.length,
-          withResults: patientLabTests.filter(t => t.results).length,
-          sampleTest: patientLabTests[0] ? {
-            id: patientLabTests[0].id,
-            name: patientLabTests[0].test_name,
-            hasResults: !!patientLabTests[0].results,
-            status: patientLabTests[0].status,
-            resultsType: typeof patientLabTests[0].results,
-            resultsPreview: patientLabTests[0].results ? 
-              (typeof patientLabTests[0].results === 'string' ? 
-                patientLabTests[0].results.substring(0, 100) : 
-                JSON.stringify(patientLabTests[0].results).substring(0, 100)
-              ) : null
-          } : null
-        }
-      });
-
       // Verify data belongs to correct patient
       const invalidVisits = patientVisits.filter(v => v.patient_id !== patient.id);
       const invalidPrescriptions = patientPrescriptions.filter(p => p.patient_id !== patient.id);
       const invalidLabTests = patientLabTests.filter(l => l.patient_id !== patient.id);
       
       if (invalidVisits.length > 0 || invalidPrescriptions.length > 0 || invalidLabTests.length > 0) {
-        console.warn('Medical report: Found data for wrong patient:', {
-          invalidVisits: invalidVisits.length,
-          invalidPrescriptions: invalidPrescriptions.length,
-          invalidLabTests: invalidLabTests.length,
-          expectedPatientId: patient.id
-        });
+
         toast.warning('Some medical data may not belong to this patient. Check console for details.');
       }
       
@@ -2494,7 +2381,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, `Medical History - ${patient.full_name}`);
     } catch (error) {
-      console.error('Error generating medical report:', error);
+
       toast.error('Failed to generate medical report');
     }
   };
@@ -2506,12 +2393,6 @@ export default function BillingDashboard() {
         toast.error('Invalid patient selected for financial report');
         return;
       }
-
-      console.log('Generating financial report for patient:', {
-        id: patient.id,
-        name: patient.full_name,
-        dateRange: fromDate && toDate ? `${fromDate} to ${toDate}` : 'All dates'
-      });
 
       // Build API URLs with date filters if provided
       const buildDateQuery = (baseUrl: string) => {
@@ -2535,20 +2416,10 @@ export default function BillingDashboard() {
       const invalidInvoices = patientInvoices.filter(i => i.patient_id !== patient.id);
       
       if (invalidPayments.length > 0 || invalidInvoices.length > 0) {
-        console.warn('Financial report: Found data for wrong patient:', {
-          invalidPayments: invalidPayments.length,
-          invalidInvoices: invalidInvoices.length,
-          expectedPatientId: patient.id
-        });
+
         toast.warning('Some data may not belong to this patient. Check console for details.');
       }
 
-      console.log('Financial report data:', {
-        patientId: patient.id,
-        payments: patientPayments.length,
-        invoices: patientInvoices.length
-      });
-      
       const totalPaid = patientPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
       const totalInvoiced = patientInvoices.reduce((sum, invoice) => sum + Number(invoice.total_amount || 0), 0);
       const totalBalance = patientInvoices.reduce((sum, invoice) => sum + Number((invoice.total_amount || 0) - (invoice.paid_amount || 0)), 0);
@@ -2677,7 +2548,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, `Financial Summary - ${patient.full_name}`);
     } catch (error) {
-      console.error('Error generating financial report:', error);
+
       toast.error('Failed to generate financial report');
     }
   };
@@ -2689,12 +2560,6 @@ export default function BillingDashboard() {
         toast.error('Invalid patient selected for prescriptions report');
         return;
       }
-
-      console.log('Generating prescriptions report for patient:', {
-        id: patient.id,
-        name: patient.full_name,
-        dateRange: fromDate && toDate ? `${fromDate} to ${toDate}` : 'All dates'
-      });
 
       // Build API URL with date filters if provided
       const params = new URLSearchParams();
@@ -2710,10 +2575,7 @@ export default function BillingDashboard() {
       const invalidPrescriptions = patientPrescriptions.filter(p => p.patient_id !== patient.id);
       
       if (invalidPrescriptions.length > 0) {
-        console.warn('Prescriptions report: Found data for wrong patient:', {
-          invalidPrescriptions: invalidPrescriptions.length,
-          expectedPatientId: patient.id
-        });
+
         toast.warning('Some prescription data may not belong to this patient. Check console for details.');
       }
       
@@ -2813,7 +2675,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, `Prescription History - ${patient.full_name}`);
     } catch (error) {
-      console.error('Error generating prescription report:', error);
+
       toast.error('Failed to generate prescription report');
     }
   };
@@ -2825,12 +2687,6 @@ export default function BillingDashboard() {
         toast.error('Invalid patient selected for lab results report');
         return;
       }
-
-      console.log('Generating lab results report for patient:', {
-        id: patient.id,
-        name: patient.full_name,
-        dateRange: fromDate && toDate ? `${fromDate} to ${toDate}` : 'All dates'
-      });
 
       // Build API URL with date filters if provided
       const params = new URLSearchParams();
@@ -2846,10 +2702,7 @@ export default function BillingDashboard() {
       const invalidLabTests = patientLabTests.filter(l => l.patient_id !== patient.id);
       
       if (invalidLabTests.length > 0) {
-        console.warn('Lab results report: Found data for wrong patient:', {
-          invalidLabTests: invalidLabTests.length,
-          expectedPatientId: patient.id
-        });
+
         toast.warning('Some lab test data may not belong to this patient. Check console for details.');
       }
       
@@ -2967,7 +2820,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, `Laboratory Results - ${patient.full_name}`);
     } catch (error) {
-      console.error('Error generating lab results report:', error);
+
       toast.error('Failed to generate lab results report');
     }
   };
@@ -3091,7 +2944,7 @@ export default function BillingDashboard() {
       
       handlePrint(printContent, 'Laboratory Tests Report');
     } catch (error) {
-      console.error('Error fetching lab tests for report:', error);
+
       toast.error('Failed to generate lab tests report');
     }
   };
@@ -3169,28 +3022,27 @@ export default function BillingDashboard() {
   };
 
   const handleOpenPaymentDialog = (invoice: any) => {
-    console.log('Opening payment dialog for invoice:', invoice);
-    console.log('Invoice type:', typeof invoice);
-    console.log('Invoice keys:', Object.keys(invoice || {}));
-    
+
+
+
     // Check if invoice is wrapped in an object and unwrap it
     let actualInvoice = invoice;
     if (invoice && typeof invoice === 'object' && invoice.invoice) {
-      console.warn('Invoice is wrapped in an object, unwrapping:', invoice);
+
       actualInvoice = invoice.invoice;
     }
     
     // Validate invoice has required data
     if (!actualInvoice.id) {
       toast.error('Invalid invoice data. Please refresh and try again.');
-      console.error('Invalid invoice structure:', { original: invoice, unwrapped: actualInvoice });
+
       return;
     }
     
     const patientId = actualInvoice.patient_id || actualInvoice.patient?.id;
     if (!patientId) {
       toast.error('Invoice is missing patient information. Please refresh and try again.');
-      console.error('Invoice missing patient_id:', { original: invoice, unwrapped: actualInvoice });
+
       return;
     }
     
@@ -3268,16 +3120,7 @@ export default function BillingDashboard() {
           toast.info(`Initiating ${payAllPaymentMethod} payment...`);
           
           // Debug: Log the payment request data
-          console.log('Pay All payment request data:', {
-            phoneNumber,
-            amount: totalAmount,
-            invoiceId: unpaidInvoices[0].id,
-            patientId: patientId,
-            paymentType: 'Invoice Payment',
-            paymentMethod: payAllPaymentMethod,
-            unpaidInvoicesCount: unpaidInvoices.length
-          });
-          
+
           const paymentRequest: MobilePaymentRequest = {
             phoneNumber,
             amount: totalAmount,
@@ -3309,7 +3152,7 @@ export default function BillingDashboard() {
             return;
           }
         } catch (error: any) {
-          console.error('Mobile money payment error:', error);
+
           toast.error(error.response?.data?.message || error.message || 'Failed to initiate mobile money payment');
           return;
         }
@@ -3357,7 +3200,7 @@ export default function BillingDashboard() {
       setPayAllPaymentMethod('');
 
     } catch (error: any) {
-      console.error('Pay All error:', error);
+
       toast.error(error.message || 'Failed to process bulk payment');
     } finally {
       setPayAllProcessing(false);
@@ -3393,7 +3236,7 @@ export default function BillingDashboard() {
       const totalPrice = Number(service.total_price || (unitPrice * quantity));
       
       if (unitPrice <= 0) {
-        console.warn('Service with zero or missing price:', service);
+
         // Set a default price for services without pricing
         const defaultPrice = service.service?.service_type?.toLowerCase().includes('lab') ? 5000 : 2000;
         calculatedCost += defaultPrice * quantity;
@@ -3448,9 +3291,7 @@ export default function BillingDashboard() {
     try {
       const invoiceRes = await api.post('/billing/invoices', invoiceData);
       const createdInvoice = invoiceRes.data.invoice;
-      
-      console.log('Invoice created successfully with items:', createdInvoice);
-      
+
       // Update the patient's visit to mark billing as completed
       try {
         const visitsRes = await api.get(`/visits?patient_id=${selectedPatientId}&current_stage=billing&overall_status=Active&limit=1`);
@@ -3465,14 +3306,12 @@ export default function BillingDashboard() {
             overall_status: 'Completed',
             updated_at: new Date().toISOString()
           });
-          
-          console.log('✅ Visit updated - patient billing completed');
-          
+
           // Remove from billingVisits list
           setBillingVisits(prev => prev.filter(v => v.id !== visit.id));
         }
       } catch (visitError) {
-        console.error('Error updating visit:', visitError);
+
         // Don't fail the whole operation if visit update fails
       }
       
@@ -3483,7 +3322,7 @@ export default function BillingDashboard() {
       // Add new invoice to local state
       setRawInvoicesData(prev => [...prev, createdInvoice]);
     } catch (error: any) {
-      console.error('Error creating invoice:', error);
+
       toast.error(`Failed to create invoice: ${error.message}`);
     }
   };
@@ -3495,7 +3334,7 @@ export default function BillingDashboard() {
     // Handle case where selectedInvoice might be wrapped in an object
     let actualInvoice = selectedInvoice;
     if (selectedInvoice && typeof selectedInvoice === 'object' && selectedInvoice.invoice) {
-      console.warn('selectedInvoice is wrapped in an object, extracting actual invoice:', selectedInvoice);
+
       actualInvoice = selectedInvoice.invoice;
     }
 
@@ -3541,16 +3380,13 @@ export default function BillingDashboard() {
       );
       if (foundPatient) {
         patientId = foundPatient.id;
-        console.log('Found patient_id from patients array:', patientId);
+
       }
     }
     
     if (!patientId) {
       toast.error('Invalid patient information. Please refresh and try again.');
-      console.error('Missing patient_id in invoice:', {
-        invoice: selectedInvoice,
-        availablePatients: patients.length
-      });
+
       setMobilePaymentProcessing(false);
       setPaymentStatus('');
       return;
@@ -3560,10 +3396,7 @@ export default function BillingDashboard() {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(patientId)) {
       toast.error('Invalid patient ID format. Please refresh and try again.');
-      console.error('Invalid patient_id format:', {
-        patientId,
-        invoice: selectedInvoice
-      });
+
       setMobilePaymentProcessing(false);
       setPaymentStatus('');
       return;
@@ -3572,11 +3405,7 @@ export default function BillingDashboard() {
     // Validate that patient_id matches invoice's patient_id
     if (patientId !== actualInvoice.patient_id) {
       toast.error('Patient ID mismatch with invoice. Please refresh and try again.');
-      console.error('Patient ID mismatch in mobile payment:', {
-        extractedPatientId: patientId,
-        invoicePatientId: actualInvoice.patient_id,
-        invoice: actualInvoice
-      });
+
       setMobilePaymentProcessing(false);
       setPaymentStatus('');
       return;
@@ -3616,7 +3445,7 @@ export default function BillingDashboard() {
         toast.error(response.message || 'Failed to initiate mobile payment');
       }
     } catch (error) {
-      console.error('Payment error:', error);
+
       setPaymentStatus('failed');
       toast.error('Failed to process mobile payment');
     } finally {
@@ -3651,7 +3480,7 @@ export default function BillingDashboard() {
         setTimeout(() => checkPaymentStatus(transactionId), 10000);
       }
     } catch (error) {
-      console.error('Error checking payment status:', error);
+
     }
   };
 
@@ -3662,7 +3491,7 @@ export default function BillingDashboard() {
         const invoiceRes = await api.get(`/billing/invoices/${invoiceId}`);
         invoice = invoiceRes.data.invoice;
       } catch (error) {
-        console.error('Error fetching invoice:', error);
+
         return;
       }
 
@@ -3685,7 +3514,7 @@ export default function BillingDashboard() {
               const visitsRes = await api.get(`/visits?patient_id=${patientId}&current_stage=billing&overall_status=Active&limit=1`);
               visits = visitsRes.data.visits;
             } catch (error) {
-              console.error('Error fetching patient visits:', error);
+
               visits = [];
             }
 
@@ -3699,16 +3528,15 @@ export default function BillingDashboard() {
                   updated_at: new Date().toISOString()
                 });
 
-                console.log('Patient visit completed and removed from billing queue');
               } catch (error) {
-                console.error('Error updating patient visit:', error);
+
               }
             }
           }
         }
       }
     } catch (error) {
-      console.error('Error updating invoice after payment:', error);
+
     }
   };
 
@@ -3716,9 +3544,8 @@ export default function BillingDashboard() {
     e.preventDefault();
 
     // Debug: Log selectedInvoice at the start of form submission
-    console.log('🔍 handleRecordPayment - selectedInvoice at start:', selectedInvoice);
-    console.log('🔍 handleRecordPayment - selectedInvoice type:', typeof selectedInvoice);
-    console.log('🔍 handleRecordPayment - selectedInvoice keys:', Object.keys(selectedInvoice || {}));
+
+
 
     // Handle mobile payments separately
     if (['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'Halopesa'].includes(paymentMethod)) {
@@ -3745,7 +3572,7 @@ export default function BillingDashboard() {
     
     // Handle case where selectedInvoice might be wrapped in an object
     if (selectedInvoice && typeof selectedInvoice === 'object' && selectedInvoice.invoice) {
-      console.warn('selectedInvoice is wrapped in an object, extracting actual invoice:', selectedInvoice);
+
       actualInvoice = selectedInvoice.invoice;
       patientId = selectedInvoice.patientId || actualInvoice.patient_id || actualInvoice.patient?.id;
     } else {
@@ -3753,10 +3580,9 @@ export default function BillingDashboard() {
     }
 
     // Debug: Log patient ID extraction
-    console.log('🔍 Extracted patientId:', patientId);
-    console.log('🔍 patientId type:', typeof patientId);
-    console.log('🔍 selectedInvoice.patient_id:', selectedInvoice.patient_id);
-    console.log('🔍 selectedInvoice.patient?.id:', selectedInvoice.patient?.id);
+
+
+
 
     const maxAmount = Number(actualInvoice.total_amount as number) - Number(actualInvoice.paid_amount as number || 0);
     if (amount > maxAmount) {
@@ -3772,43 +3598,31 @@ export default function BillingDashboard() {
       );
       if (foundPatient) {
         patientId = foundPatient.id;
-        console.log('Found patient_id from patients array:', patientId);
+
       }
     }
     
     if (!patientId) {
       toast.error('Invalid patient information. Please refresh and try again.');
-      console.error('Missing patient_id in invoice:', {
-        invoice: selectedInvoice,
-        actualInvoice: actualInvoice,
-        availablePatients: patients.length
-      });
+
       return;
     }
 
     // Validate UUID format (basic check)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    console.log('🔍 UUID validation - patientId:', patientId);
-    console.log('🔍 UUID validation - regex test result:', uuidRegex.test(patientId));
-    console.log('🔍 UUID validation - patientId length:', patientId?.length);
-    
+
+
+
     if (!uuidRegex.test(patientId)) {
       toast.error('Invalid patient ID format. Please refresh and try again.');
-      console.error('Invalid patient_id format:', {
-        patientId,
-        invoice: selectedInvoice
-      });
+
       return;
     }
 
     // Validate that patient_id matches invoice's patient_id
     if (patientId !== actualInvoice.patient_id) {
       toast.error('Patient ID mismatch with invoice. Please refresh and try again.');
-      console.error('Patient ID mismatch:', {
-        extractedPatientId: patientId,
-        invoicePatientId: actualInvoice.patient_id,
-        invoice: actualInvoice
-      });
+
       return;
     }
 
@@ -3823,18 +3637,13 @@ export default function BillingDashboard() {
       status: 'Completed',
     };
 
-    console.log('Payment data being sent:', paymentData);
-
     try {
       const paymentResponse = await api.post('/payments', paymentData);
-      console.log('Payment created successfully:', paymentResponse.data);
-      
+
       // Refresh invoice data to get updated amounts
       const updatedInvoiceResponse = await api.get(`/billing/invoices/${actualInvoice.id}`);
       const updatedInvoice = updatedInvoiceResponse.data.invoice;
-      
-      console.log('Updated invoice after payment:', updatedInvoice);
-      
+
       // Update local invoice data
       setRawInvoicesData(prev => prev.map(inv => 
         inv.id === actualInvoice.id ? updatedInvoice : inv
@@ -3843,7 +3652,7 @@ export default function BillingDashboard() {
       toast.success(`Payment of TSh${amount.toFixed(2)} recorded successfully!`);
       
     } catch (error: any) {
-      console.error('Payment error:', error);
+
       const errorMessage = error.response?.data?.message || error.message || 'Failed to record payment';
       toast.error(errorMessage);
       return;
@@ -3868,13 +3677,9 @@ export default function BillingDashboard() {
 
     // If fully paid, complete the visit
     if (newStatus === 'Paid') {
-      console.log('Payment fully completed, updating patient visit...', {
-        patient_id: patientId,
-        invoice_id: actualInvoice?.id
-      });
 
       if (!patientId) {
-        console.error('No patient_id found on invoice');
+
         toast.warning('Payment recorded but could not update patient visit - no patient ID');
       } else {
         // First, try to find visit in billing stage
@@ -3883,27 +3688,23 @@ export default function BillingDashboard() {
           const visitsRes = await api.get(`/visits?patient_id=${patientId}&current_stage=billing&overall_status=Active&limit=1`);
           visits = visitsRes.data.visits || [];
         } catch (error) {
-          console.error('Error fetching patient visit:', error);
-        }
 
-        console.log('Found visits in billing stage:', visits.length);
+        }
 
         // If no visit in billing, try to find ANY active visit for this patient
         if (!visits || visits.length === 0) {
-          console.log('No visit in billing stage, checking for any active visit...');
+
           try {
             const anyVisitsRes = await api.get(`/visits?patient_id=${patientId}&overall_status=Active&limit=1`);
             const anyVisits = anyVisitsRes.data.visits || [];
-            
-            console.log('Found any active visits:', anyVisits.length, anyVisits[0]?.current_stage);
-            
+
             // Use the active visit even if not in billing stage
             if (anyVisits && anyVisits.length > 0) {
               visits = anyVisits;
-              console.log('Using active visit from stage:', anyVisits[0].current_stage);
+
             }
           } catch (error) {
-            console.error('Error fetching any active visits:', error);
+
           }
         }
 
@@ -3917,15 +3718,13 @@ export default function BillingDashboard() {
               updated_at: new Date().toISOString()
             });
 
-            console.log('Patient visit completed and removed from billing queue');
             toast.success('Payment completed! Patient visit finished.');
           } catch (error: any) {
-            console.error('Error updating patient visit:', error);
+
             toast.error(`Failed to update patient visit: ${error.message}`);
           }
         } else {
-          console.warn('No active patient visit found - creating completed visit record');
-          
+
           // Create a completed visit record for this payment
           try {
             await api.post('/visits', {
@@ -3943,11 +3742,10 @@ export default function BillingDashboard() {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
-            
-            console.log('Created completed visit record for payment');
+
             toast.success('Payment completed successfully!');
           } catch (error: any) {
-            console.error('Error creating visit record:', error);
+
             toast.warning('Payment recorded successfully (no visit record created)');
           }
         }
@@ -4308,9 +4106,8 @@ export default function BillingDashboard() {
                                   className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                                   onClick={() => {
                                     const unpaidInvoices = patientData.invoices.filter(inv => inv.status !== 'Paid');
-                                    console.log('Pay Now clicked - unpaidInvoices:', unpaidInvoices);
-                                    console.log('Pay Now clicked - patientData.invoices:', patientData.invoices);
-                                    
+
+
                                     if (unpaidInvoices.length === 1) {
                                       // If only one unpaid invoice, open payment dialog directly
                                       handleOpenPaymentDialog(unpaidInvoices[0]);
@@ -5194,8 +4991,7 @@ export default function BillingDashboard() {
                 // If insurance company has API key, submit via API
                 if (insuranceCompany.api_key && insuranceCompany.api_endpoint) {
                   try {
-                    console.log('Submitting claim to insurance API:', insuranceCompany.api_endpoint);
-                    
+
                     // NHIF Tanzania format
                     const apiPayload = {
                       ClaimNumber: claimNumber,
@@ -5229,19 +5025,18 @@ export default function BillingDashboard() {
                     }
                     
                     const apiResult = await response.json();
-                    console.log('Insurance API response:', apiResult);
-                    
+
                     // Update claim data with API response
                     claimData.notes = `${notes}\n\nAPI Response: ${JSON.stringify(apiResult)}`;
                     
                     toast.success('Claim submitted to insurance company via API');
                   } catch (apiError) {
-                    console.error('Insurance API error:', apiError);
+
                     toast.warning('Claim saved locally but API submission failed. Will retry later.');
                     claimData.notes = `${notes}\n\nAPI Error: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`;
                   }
                 } else {
-                  console.log('No API configuration found, saving claim locally only');
+
                 }
 
                 // Save claim to database
@@ -5255,11 +5050,11 @@ export default function BillingDashboard() {
                     setRawClaimsData(prev => [...prev, response.data.claim]);
                   }
                 } catch (error: any) {
-                  console.error('Database error:', error);
+
                   toast.error(`Failed to save claim: ${error.message}`);
                 }
               } catch (error) {
-                console.error('Claim submission error:', error);
+
                 toast.error('Failed to submit claim');
               } finally {
                 setLoading(false);
@@ -5270,18 +5065,15 @@ export default function BillingDashboard() {
                 <Select name="invoiceId" value={claimInvoiceId} onValueChange={(value) => {
                   setClaimInvoiceId(value);
                   // Auto-fill claim amount with invoice total
-                  console.log('Selected invoice ID:', value);
-                  console.log('All invoices:', invoices);
-                  
+
+
                   const selectedInvoice = invoices
                     .flatMap(pd => pd.invoices || [])
                     .find(inv => inv.id === value);
-                  
-                  console.log('Found invoice:', selectedInvoice);
-                  
+
                   if (selectedInvoice) {
                     const amount = Number(selectedInvoice.total_amount || 0).toString();
-                    console.log('Setting claim amount to:', amount);
+
                     setClaimAmount(amount);
                   }
                 }} required>

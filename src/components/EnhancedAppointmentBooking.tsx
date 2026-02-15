@@ -43,7 +43,7 @@ const EnhancedAppointmentBooking = ({ patients, onSuccess }: EnhancedAppointment
       const { data } = await api.get('/departments');
       setDepartments(data.departments || []);
     } catch (error) {
-      console.error('Error fetching departments:', error);
+
       setDepartments([]);
     }
   };
@@ -56,7 +56,7 @@ const EnhancedAppointmentBooking = ({ patients, onSuccess }: EnhancedAppointment
       setDoctors(doctorList);
       setFilteredDoctors(doctorList);
     } catch (error) {
-      console.error('Error fetching doctors:', error);
+
       setDoctors([]);
       setFilteredDoctors([]);
     }
@@ -83,7 +83,7 @@ const EnhancedAppointmentBooking = ({ patients, onSuccess }: EnhancedAppointment
       setDialogOpen(false);
       onSuccess();
     } catch (error: any) {
-      console.error('Error booking appointment:', error);
+
       toast.error(error.response?.data?.error || 'Failed to book appointment');
     }
   };

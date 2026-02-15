@@ -32,20 +32,7 @@ export function DispenseDialog({
 
   useEffect(() => {
     const prescriptionItems = prescription?.items || prescription?.medications || [];
-    
-    console.log('🔍 DispenseDialog - Prescription data:', {
-      prescription: prescription,
-      items: prescriptionItems,
-      itemsWithDetails: prescriptionItems.map((item: any) => ({
-        id: item.id,
-        medication_name: item.medication_name,
-        dosage: item.dosage,
-        frequency: item.frequency,
-        duration: item.duration,
-        quantity: item.quantity
-      }))
-    });
-    
+
     if (prescriptionItems.length > 0) {
       setEditableMedications(
         prescriptionItems.map((med: any) => ({
@@ -97,8 +84,7 @@ export function DispenseDialog({
           original_dosage: updated[index].original_dosage || updated[index].dosage,
           original_quantity: updated[index].original_quantity || updated[index].quantity
         };
-        
-        console.log('Auto-filled dosage for ' + selectedMed.name + ': ' + autoFilledDosage);
+
       }
     }
     

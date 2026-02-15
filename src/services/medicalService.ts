@@ -21,7 +21,7 @@ export const createMedicalService = async (service: Omit<MedicalService, 'id' | 
     await logActivity('medical_service.create', { service_name: service.service_name });
     return { data: response.data.service, error: null };
   } catch (error) {
-    console.error('Error creating medical service:', error);
+
     return { data: null, error };
   }
 };
@@ -36,14 +36,13 @@ export const getMedicalServices = async (filters?: { is_active?: boolean; servic
     if (filters?.service_type) {
       params.append('service_type', filters.service_type);
     }
-    
-    console.log('Fetching medical services from API...');
+
     const response = await api.get(`/services?${params.toString()}`);
-    console.log('Medical services response:', response.data);
+
     return { data: response.data.services || [], error: null };
   } catch (error: any) {
-    console.error('Error fetching medical services:', error);
-    console.error('Error details:', error.response?.data || error.message);
+
+
     return { data: [], error };
   }
 };
@@ -54,7 +53,7 @@ export const getMedicalServiceById = async (id: string) => {
     const response = await api.get(`/services/${id}`);
     return { data: response.data.service, error: null };
   } catch (error) {
-    console.error('Error fetching medical service:', error);
+
     return { data: null, error };
   }
 };
@@ -66,7 +65,7 @@ export const updateMedicalService = async (id: string, updates: Partial<MedicalS
     await logActivity('medical_service.update', { service_id: id });
     return { data: response.data.service, error: null };
   } catch (error) {
-    console.error('Error updating medical service:', error);
+
     return { data: null, error };
   }
 };
@@ -78,7 +77,7 @@ export const deleteMedicalService = async (id: string, userId: string) => {
     await logActivity('medical_service.delete', { service_id: id });
     return { error: null };
   } catch (error) {
-    console.error('Error deleting medical service:', error);
+
     return { error };
   }
 };
@@ -90,7 +89,7 @@ export const toggleServiceStatus = async (id: string, currentStatus: boolean, us
     await logActivity('medical_service.toggle', { service_id: id, new_status: !currentStatus });
     return { data: response.data.service, error: null };
   } catch (error) {
-    console.error('Error toggling service status:', error);
+
     return { data: null, error };
   }
 };
@@ -101,7 +100,7 @@ export const bulkImportServices = async (services: Omit<MedicalService, 'id' | '
     const response = await api.post('/services/bulk', { services });
     return { data: response.data, error: null };
   } catch (error) {
-    console.error('Error bulk importing services:', error);
+
     return { data: null, error };
   }
 };

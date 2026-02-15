@@ -124,21 +124,20 @@ export default function MedicalServicesDashboard() {
 
     setLoading(true);
     try {
-      console.log('🔄 Fetching medical services data...');
+
       const { data: servicesData, error: servicesError } = await getMedicalServices();
       
       if (servicesError) {
-        console.error('❌ Error fetching services:', servicesError);
+
         toast.error('Failed to load medical services. Check console for details.');
       } else {
-        console.log('✅ Received services:', servicesData);
-        console.log('📊 Services count:', servicesData?.length || 0);
+
+
         setServices(servicesData || []);
         
         // Always show a message about loaded services
         const count = servicesData?.length || 0;
-        console.log(`📋 Setting ${count} services in state`);
-        
+
         if (count > 0) {
           toast.success(`Loaded ${count} medical services`);
         } else {
@@ -150,7 +149,7 @@ export default function MedicalServicesDashboard() {
       setPatientServices([]);
       setPatients([]);
     } catch (error) {
-      console.error('Error fetching data:', error);
+
       toast.error('Failed to load medical services data');
     } finally {
       setLoading(false);
@@ -170,11 +169,11 @@ export default function MedicalServicesDashboard() {
       }, user!.id);
       
       if (error) {
-        console.error('Error adding service:', error);
+
         toast.error('Failed to add medical service');
       } else {
         toast.success('Medical service added successfully');
-        console.log('✅ Service added successfully, refreshing data...');
+
         setShowAddDialog(false);
         setNewService({
           service_code: '',
@@ -191,7 +190,7 @@ export default function MedicalServicesDashboard() {
         }, 500);
       }
     } catch (error) {
-      console.error('Error adding service:', error);
+
       toast.error('Failed to add medical service');
     }
   };
@@ -221,7 +220,7 @@ export default function MedicalServicesDashboard() {
       }, user!.id);
 
       if (error) {
-        console.error('Error updating service:', error);
+
         toast.error('Failed to update medical service');
       } else {
         toast.success('Medical service updated successfully');
@@ -230,7 +229,7 @@ export default function MedicalServicesDashboard() {
         fetchData();
       }
     } catch (error) {
-      console.error('Error updating service:', error);
+
       toast.error('Failed to update medical service');
     }
   };
@@ -244,14 +243,14 @@ export default function MedicalServicesDashboard() {
       const { error } = await deleteMedicalService(serviceId, user!.id);
 
       if (error) {
-        console.error('Error deleting service:', error);
+
         toast.error('Failed to delete medical service');
       } else {
         toast.success('Medical service deleted successfully');
         fetchData();
       }
     } catch (error) {
-      console.error('Error deleting service:', error);
+
       toast.error('Failed to delete medical service');
     }
   };
@@ -800,7 +799,7 @@ export default function MedicalServicesDashboard() {
                       fetchData(); // Refresh the list
                     }
                   } catch (err: any) {
-                    console.error('CSV import error:', err);
+
                     setImportError(err?.message || 'Failed to import CSV');
                   } finally {
                     setImporting(false);

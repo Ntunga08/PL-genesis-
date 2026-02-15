@@ -59,8 +59,7 @@ export function useDataPolling<T = any>(options: UseDataPollingOptions<T>) {
       }
     } catch (err) {
       const error = err as Error;
-      console.error(`Error fetching data from ${endpoint}:`, error);
-      
+
       setError(error);
 
       if (showErrorToast) {
@@ -80,7 +79,7 @@ export function useDataPolling<T = any>(options: UseDataPollingOptions<T>) {
     interval,
     enabled,
     onError: (err) => {
-      console.error('Polling error:', err);
+
       if (onError) {
         onError(err);
       }

@@ -59,8 +59,7 @@ export default function PatientReports() {
   const fetchSystemSettings = async () => {
     try {
       const { data } = await api.get('/settings');
-      console.log('📋 Settings API Response:', data);
-      
+
       // Handle both formats: settings object or settingsArray
       let settings: any = {};
       if (data.settingsArray && Array.isArray(data.settingsArray)) {
@@ -71,14 +70,7 @@ export default function PatientReports() {
       } else if (data.settings) {
         settings = data.settings;
       }
-      
-      console.log('🏥 Hospital Settings:', {
-        name: settings.hospital_name,
-        address: settings.hospital_address,
-        phone: settings.hospital_phone,
-        email: settings.hospital_email
-      });
-      
+
       setSystemSettings({
         hospital_name: settings.hospital_name || 'Hospital Management System',
         hospital_address: settings.hospital_address || '[Address to be configured]',
@@ -86,19 +78,14 @@ export default function PatientReports() {
         hospital_email: settings.hospital_email || '[Email to be configured]'
       });
     } catch (error) {
-      console.error('Error fetching settings:', error);
+
       // Keep default values
     }
   };
 
   useEffect(() => {
     if (patientHistory) {
-      console.log('🖨️ PRINT VIEW DATA UPDATED:', {
-        prescriptions: patientHistory.prescriptions?.length || 0,
-        labTests: patientHistory.labTests?.length || 0,
-        prescriptionsData: patientHistory.prescriptions,
-        labTestsData: patientHistory.labTests
-      });
+
     }
   }, [patientHistory]);
 
@@ -108,7 +95,7 @@ export default function PatientReports() {
       const { data } = await api.get('/patients', { params: { limit: 1000 } });
       setPatients(data.patients || []);
     } catch (error) {
-      console.error('Error fetching patients:', error);
+
       toast.error('Failed to load patients');
     } finally {
       setLoading(false);
@@ -125,19 +112,19 @@ export default function PatientReports() {
       // Fetch all patient data
       const [appointmentsRes, prescriptionsRes, labTestsRes, invoicesRes] = await Promise.all([
         api.get(`/appointments`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-          console.error('Appointments fetch error:', err);
+
           return { data: { appointments: [] } };
         }),
         api.get(`/prescriptions`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-          console.error('Prescriptions fetch error:', err);
+
           return { data: { prescriptions: [] } };
         }),
         api.get(`/labs`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-          console.error('Lab tests fetch error:', err);
+
           return { data: { labTests: [] } };
         }),
         api.get(`/billing/invoices`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-          console.error('Invoices fetch error:', err);
+
           return { data: { invoices: [] } };
         })
       ]);
@@ -148,52 +135,28 @@ export default function PatientReports() {
         .reduce((sum: number, inv: any) => sum + Number(inv.total_amount || 0), 0);
 
       // Debug logging
-      console.log('=== PATIENT HISTORY DEBUG ===');
-      console.log('Appointments Response:', appointmentsRes.data);
-      console.log('Prescriptions Response:', prescriptionsRes.data);
-      console.log('Lab Tests Response:', labTestsRes.data);
-      console.log('Invoices Response:', invoicesRes.data);
-      
+
+
+
+
+
       const appointments = appointmentsRes.data.appointments || [];
       const prescriptions = prescriptionsRes.data.prescriptions || [];
       const labTests = labTestsRes.data.labTests || [];
-      
-      console.log('Processed Data:', {
-        appointments: appointments.length,
-        prescriptions: prescriptions.length,
-        prescriptionsWithMeds: prescriptions.filter(p => p.medications?.length > 0).length,
-        totalMedications: prescriptions.reduce((sum, rx) => sum + (rx.medications?.length || 0), 0),
-        labTests: labTests.length,
-        invoices: invoices.length,
-        totalSpent
-      });
-      
+
       // Log detailed prescription data
       if (prescriptions.length > 0) {
-        console.log('📋 Prescription Details:');
+
         prescriptions.forEach((rx, i) => {
-          console.log(`  Prescription ${i + 1}:`, {
-            id: rx.id,
-            date: rx.prescription_date,
-            doctor: rx.doctor?.full_name,
-            status: rx.status,
-            medicationsCount: rx.medications?.length || 0,
-            medications: rx.medications
-          });
+
         });
       }
       
       // Log detailed lab test data
       if (labTests.length > 0) {
-        console.log('🔬 Lab Test Details:');
+
         labTests.forEach((test, i) => {
-          console.log(`  Lab Test ${i + 1}:`, {
-            id: test.id,
-            name: test.test_name,
-            type: test.test_type,
-            result: test.result_value,
-            status: test.status
-          });
+
         });
       }
 
@@ -205,7 +168,7 @@ export default function PatientReports() {
         totalSpent
       });
     } catch (error) {
-      console.error('Error fetching patient history:', error);
+
       toast.error('Failed to load patient history');
     } finally {
       setLoadingHistory(false);
@@ -232,7 +195,7 @@ export default function PatientReports() {
         return; // Billing check failed, don't print
       }
     } catch (error) {
-      console.error('Error checking billing status:', error);
+
       toast.error('Unable to verify billing status');
       return;
     }
@@ -572,12 +535,10 @@ export default function PatientReports() {
 
     // Add print content to page
     document.body.appendChild(printDiv);
-    
-    console.log('✅ Patient report content added to page');
 
     // Trigger print
     setTimeout(() => {
-      console.log('🖨️ Printing patient report');
+
       window.print();
       
       // Clean up after printing
@@ -590,7 +551,7 @@ export default function PatientReports() {
         if (styleElement) {
           styleElement.remove();
         }
-        console.log('🧹 Patient report content and styles cleaned up');
+
       }, 1000);
     }, 100);
     
@@ -941,12 +902,6 @@ export default function PatientReports() {
                 </div>
               ) : patientHistory ? (
                 <>
-                  {console.log('📊 Rendering summary cards with:', {
-                    appointments: patientHistory.appointments?.length || 0,
-                    prescriptions: patientHistory.prescriptions?.length || 0,
-                    medications: patientHistory.prescriptions?.reduce((sum, rx) => sum + (rx.medications?.length || 0), 0) || 0,
-                    labTests: patientHistory.labTests?.length || 0
-                  })}
                   <div className="grid gap-4 md:grid-cols-5">
                     <Card>
                       <CardHeader className="pb-2">
@@ -1130,12 +1085,7 @@ export default function PatientReports() {
               </h2>
               {(() => {
                 const hasData = patientHistory.prescriptions && patientHistory.prescriptions.length > 0;
-                console.log('📋 Print: Prescriptions check:', {
-                  exists: !!patientHistory.prescriptions,
-                  length: patientHistory.prescriptions?.length,
-                  hasData,
-                  data: patientHistory.prescriptions
-                });
+
                 return null;
               })()}
               {patientHistory.prescriptions && patientHistory.prescriptions.length > 0 ? (
@@ -1199,12 +1149,7 @@ export default function PatientReports() {
               </h2>
               {(() => {
                 const hasData = patientHistory.labTests && patientHistory.labTests.length > 0;
-                console.log('🔬 Print: Lab Tests check:', {
-                  exists: !!patientHistory.labTests,
-                  length: patientHistory.labTests?.length,
-                  hasData,
-                  data: patientHistory.labTests
-                });
+
                 return null;
               })()}
               {patientHistory.labTests && patientHistory.labTests.length > 0 ? (

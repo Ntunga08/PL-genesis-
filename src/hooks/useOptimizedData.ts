@@ -113,7 +113,7 @@ export function useOptimizedData<T = any>(
       if (!isMountedRef.current) return;
 
       const error = err as Error;
-      console.error(`Error fetching ${endpoint}:`, error);
+
       setError(error);
 
       if (onError) {

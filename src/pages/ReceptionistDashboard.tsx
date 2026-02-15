@@ -125,19 +125,19 @@ export default function ReceptionistDashboard() {
   
   // Debug state changes
   // useEffect(() => {
-  //   console.log('Appointments state updated. Count:', appointments.length, 'Appointments:', appointments);
+  //   
   // }, [appointments]);
   
   // useEffect(() => {
-  //   console.log('Departments state updated. Count:', departments.length, 'Departments:', departments);
+  //   
   // }, [departments]);
   
   // useEffect(() => {
-  //   console.log('Doctors state updated. Count:', doctors.length, 'Doctors:', doctors);
+  //   
   // }, [doctors]);
   
   // useEffect(() => {
-  //   console.log('Patients state updated. Count:', patients.length, 'Patients:', patients);
+  //   
   // }, [patients]);
 
   // Load data when component mounts or user changes
@@ -166,7 +166,7 @@ export default function ReceptionistDashboard() {
       // Only show medications that are in stock
       setAvailableMedications(meds.filter((m: any) => (m.stock_quantity || m.quantity_in_stock || 0) > 0));
     } catch (error) {
-      console.error('Error fetching medications:', error);
+
       setAvailableMedications([]);
     }
   };
@@ -193,15 +193,14 @@ export default function ReceptionistDashboard() {
       try {
         const departmentsRes = await api.get('/departments?order=name');
         departmentsData = departmentsRes.data.departments || [];
-        console.log('Fetched departments:', departmentsData.length);
-        
+
         if (departmentsData.length === 0) {
-          console.warn('No departments found in database');
+
           toast.warning('No departments found. Please contact admin to set up departments.');
         }
       } catch (deptError) {
-        console.error('Error fetching departments:', deptError);
-        console.error('Department error details:', deptError.response?.data || deptError.message);
+
+
         toast.error('Failed to load departments. Please check backend connection.');
       }
 
@@ -221,7 +220,7 @@ export default function ReceptionistDashboard() {
             department: departmentsData.find(dept => dept.id === apt.department_id) || null
           }));
         } catch (error) {
-          console.warn('Could not fetch doctor profiles for appointments:', error);
+
           appointmentsData = appointmentsBasic || [];
         }
       }
@@ -236,22 +235,21 @@ export default function ReceptionistDashboard() {
         // Fetch doctors using the public profiles endpoint
         const doctorsRes = await api.get('/users/profiles?role=doctor');
         doctorsData = doctorsRes.data.profiles || [];
-        console.log('Found doctors:', doctorsData.length);
-        
+
         if (doctorsData.length === 0) {
-          console.warn('No doctors found in database');
+
           toast.warning('No doctors found. Please contact admin to assign doctor roles.');
         }
       } catch (error) {
-        console.error('Error fetching doctors:', error);
-        console.error('Doctor error details:', error.response?.data || error.message);
+
+
         toast.error('Failed to load doctors. Please check backend connection.');
         doctorsData = [];
       }
 
       // If still no doctors, try to create some sample doctor users
       if (!doctorsData || doctorsData.length === 0) {
-        console.log('No doctors found, attempting to create sample doctors...');
+
         try {
           // Check if we have any profiles at all
           const profilesRes = await api.get('/users/profiles?limit=5');
@@ -276,11 +274,11 @@ export default function ReceptionistDashboard() {
               const doctorsRes = await api.get(`/users/profiles?ids=${doctorIds.join(',')}`);
               const doctorProfiles = doctorsRes.data.profiles || [];
               doctorsData = doctorProfiles || [];
-              console.log('Created and found sample doctors:', doctorsData.length);
+
             }
           }
         } catch (createError) {
-          console.error('Failed to create sample doctors:', createError);
+
         }
       }
 
@@ -290,24 +288,24 @@ export default function ReceptionistDashboard() {
       let appointmentVisits = [];
       
       try {
-        console.log('🔍 Fetching visits from API...');
+
         const visitsRes = await api.get('/visits?overall_status=Active');
         patientVisits = visitsRes.data.visits || [];
-        console.log('✅ Patient visits fetched:', patientVisits.length, 'visits');
-        console.log('📊 Patient visits data:', patientVisits);
+
+
       } catch (visitsError) {
-        console.error('❌ Error fetching patient visits:', visitsError);
-        console.error('Error details:', visitsError.response?.data || visitsError.message);
+
+
       }
       
       // Also fetch from the visits table for appointment-based workflow
       try {
-        console.log('🔍 Fetching appointment visits...');
+
         const aptVisitsRes = await api.get('/appointment-visits?overall_status=Active');
         appointmentVisits = aptVisitsRes.data.visits || [];
-        console.log('✅ Appointment visits fetched:', appointmentVisits.length, 'visits');
+
       } catch (error) {
-        console.log('ℹ️ Could not fetch appointment visits:', error);
+
       }
 
       // Ensure appointmentsData is an array before filtering
@@ -361,26 +359,13 @@ export default function ReceptionistDashboard() {
       
       const receptionQueuePatients = receptionQueueFromAppointments + receptionQueueFromPatientVisits;
 
-      console.log('📈 Queue calculations:', {
-        totalPatientVisits: patientVisits?.length || 0,
-        totalAppointmentVisits: appointmentVisits?.length || 0,
-        nurseQueuePatients,
-        receptionQueueFromAppointments,
-        receptionQueueFromPatientVisits,
-        receptionQueueTotal: receptionQueuePatients,
-        visitsByStage: patientVisits?.reduce((acc, v) => {
-          acc[v.current_stage || 'empty'] = (acc[v.current_stage || 'empty'] || 0) + 1;
-          return acc;
-        }, {})
-      });
-
       // Fetch insurance companies
       let insuranceData = [];
       try {
         const insuranceRes = await api.get('/insurance/companies');
         insuranceData = insuranceRes.data.companies || [];
       } catch (error) {
-        console.warn('Could not fetch insurance companies:', error);
+
       }
 
       setAppointments(appointmentsArray);
@@ -390,18 +375,6 @@ export default function ReceptionistDashboard() {
       setInsuranceCompanies(insuranceData || []);
 
       // Debug logging
-      console.log('Dashboard data loaded:', {
-        appointments: appointmentsData?.length || 0,
-        patients: patientsData?.length || 0,
-        departments: departmentsData?.length || 0,
-        doctors: doctorsData?.length || 0,
-        todayAppointments,
-        pendingAppointments,
-        confirmedAppointments,
-        patientVisits: patientVisits?.length || 0,
-        nurseQueuePatients,
-        receptionQueuePatients
-      });
 
       // Fetch today's checked-in patients
       let checkedInToday = [];
@@ -409,7 +382,7 @@ export default function ReceptionistDashboard() {
         const checkedInRes = await api.get(`/visits?reception_status=Checked In&reception_completed_at=${today}`);
         checkedInToday = checkedInRes.data.visits || [];
       } catch (error) {
-        console.warn('Could not fetch checked-in visits:', error);
+
       }
 
       setStats({
@@ -421,13 +394,7 @@ export default function ReceptionistDashboard() {
         receptionQueuePatients,
       });
     } catch (error) {
-      console.error('Error fetching receptionist data:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
+
 
       // Set empty data to prevent crashes
       setAppointments([]);
@@ -510,7 +477,7 @@ export default function ReceptionistDashboard() {
       toast.success('Sample data created');
       fetchData(false);
     } catch (error) {
-      console.error('Error creating sample data:', error);
+
     }
   };
 
@@ -583,9 +550,7 @@ export default function ReceptionistDashboard() {
       try {
         const response = await api.get(`/departments/${appointmentDepartmentId}/doctors`);
         const assignedDoctors = response.data.doctors || [];
-        
-        console.log('Doctors for department:', appointmentDepartmentId, assignedDoctors);
-        
+
         // Doctors are already filtered by department_id in the backend
         setDepartmentDoctors(assignedDoctors);
         
@@ -596,7 +561,7 @@ export default function ReceptionistDashboard() {
           setAppointmentDoctorId('');
         }
       } catch (error) {
-        console.error('Error fetching department doctors:', error);
+
         setDepartmentDoctors([]);
       }
     };
@@ -626,7 +591,7 @@ export default function ReceptionistDashboard() {
         setDepartmentFees(feesMap);
       }
     } catch (error) {
-      console.log('Using default consultation fee');
+
     }
   };
 
@@ -665,7 +630,7 @@ export default function ReceptionistDashboard() {
         }
       }
     } catch (error) {
-      console.log('Could not check existing payments, proceeding with payment collection');
+
     }
     
     setSelectedAppointmentForPayment(appointment);
@@ -690,7 +655,7 @@ export default function ReceptionistDashboard() {
     try {
       // Handle Mobile Money Payment
       if (['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'Halopesa'].includes(paymentForm.payment_method)) {
-        console.log('Mobile Money payment detected for appointment check-in');
+
         const phoneInput = document.getElementById('apt_mobile_phone') as HTMLInputElement;
         const phoneNumber = phoneInput?.value;
         
@@ -731,12 +696,7 @@ export default function ReceptionistDashboard() {
             );
             
             // Payment is pending - webhook will confirm it and complete check-in
-            console.log('Mobile payment initiated for appointment:', {
-              transactionId: response.transactionId,
-              orderId: response.orderId,
-              appointmentId: selectedAppointmentForPayment.id
-            });
-            
+
             // Close dialog - webhook will handle the rest
             setShowPaymentDialog(false);
             setSelectedAppointmentForPayment(null);
@@ -747,7 +707,7 @@ export default function ReceptionistDashboard() {
           }
           
         } catch (error) {
-          console.error('Mobile money payment error:', error);
+
           toast.error('Failed to initiate mobile money payment');
           return;
         }
@@ -788,7 +748,7 @@ export default function ReceptionistDashboard() {
       setSelectedAppointmentForPayment(null);
       toast.success(`Payment of TSh ${amountPaid} received. Patient checked in.`);
     } catch (error) {
-      console.error('Payment error:', error);
+
       toast.error('Failed to process payment');
     }
   };
@@ -836,10 +796,9 @@ export default function ReceptionistDashboard() {
           nurse_status: 'Pending',
           overall_status: 'Active'
         };
-        
-        console.log('🏥 Reception - Creating visit:', visitData);
+
         const visitRes = await api.post('/visits', visitData);
-        console.log('✅ Visit created:', visitRes.data);
+
         if (visitRes.status !== 200 || visitRes.data.error) {
           // If error is duplicate, just update the existing one
           // In this case, we'll assume the visit was created and try to update it
@@ -861,7 +820,7 @@ export default function ReceptionistDashboard() {
       toast.success('Patient checked in and sent to nurse queue');
       logActivity('appointment.check_in', { appointment_id: appointmentId });
     } catch (error) {
-      console.error('Check-in error:', error);
+
       toast.error(`Failed to check in: ${error.message || 'Unknown error'}`);
     }
   };
@@ -886,12 +845,12 @@ export default function ReceptionistDashboard() {
             reception_status: 'Cancelled',
             updated_at: new Date().toISOString()
           });
-          console.log('Visit cancelled for appointment:', appointmentId);
+
         } else {
-          console.log('No visit found for appointment:', appointmentId);
+
         }
       } catch (visitError) {
-        console.warn('Could not update visit (may not exist yet):', visitError);
+
         // Don't fail the cancellation if visit update fails
       }
 
@@ -901,7 +860,7 @@ export default function ReceptionistDashboard() {
       // Remove from local state
       setAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
     } catch (error) {
-      console.error('Cancel error:', error);
+
       toast.error('Failed to cancel appointment');
     }
   };
@@ -972,7 +931,7 @@ export default function ReceptionistDashboard() {
         
         setReturningPatientResults(searchRes.data.patients || []);
       } catch (error) {
-        console.error('Search error:', error);
+
       }
     }, 300);
 
@@ -1031,7 +990,7 @@ export default function ReceptionistDashboard() {
       setShowReturningPatientDialog(false);
       setShowReturningPatientPaymentDialog(true);
     } catch (error: any) {
-      console.error('Error initiating returning patient visit:', error);
+
       toast.error(error.message || 'Failed to initiate visit');
     }
   };
@@ -1086,7 +1045,7 @@ export default function ReceptionistDashboard() {
         // Refresh data
         fetchData(false);
       } catch (error: any) {
-        console.error('Error creating visit:', error);
+
         toast.error(error.response?.data?.error || 'Failed to create visit');
       } finally {
         setLoading(false);
@@ -1105,7 +1064,7 @@ export default function ReceptionistDashboard() {
 
       // Handle Mobile Money Payment
       if (['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'Halopesa'].includes(paymentForm.payment_method)) {
-        console.log('Mobile Money payment detected for returning patient');
+
         const phoneInput = document.getElementById('ret_mobile_phone') as HTMLInputElement;
         const phoneNumber = phoneInput?.value;
         
@@ -1148,12 +1107,7 @@ export default function ReceptionistDashboard() {
             );
             
             // Payment is pending - webhook will confirm it and create visit
-            console.log('Mobile payment initiated for returning patient:', {
-              transactionId: response.transactionId,
-              orderId: response.orderId,
-              patientId: selectedReturningPatient.id
-            });
-            
+
             // Close dialog - webhook will handle the rest
             setShowReturningPatientPaymentDialog(false);
             setSelectedReturningPatient(null);
@@ -1168,7 +1122,7 @@ export default function ReceptionistDashboard() {
           }
           
         } catch (error) {
-          console.error('Mobile money payment error:', error);
+
           toast.error('Failed to initiate mobile money payment');
           setLoading(false);
           return;
@@ -1185,12 +1139,11 @@ export default function ReceptionistDashboard() {
         status: 'Paid',
         notes: 'Consultation Fee - Returning Patient'
       });
-      
-      console.log('Invoice creation response:', invoiceRes.data);
+
       const invoiceId = invoiceRes.data.invoice?.id || invoiceRes.data.invoiceId;
       
       if (!invoiceId) {
-        console.error('No invoice ID found in response:', invoiceRes.data);
+
         throw new Error('Failed to get invoice ID from invoice creation');
       }
       
@@ -1204,8 +1157,7 @@ export default function ReceptionistDashboard() {
         payment_date: new Date().toISOString(),
         reference_number: invoiceRes.data.invoice?.invoice_number || null
       };
-      
-      console.log('Creating payment with data:', paymentData);
+
       await api.post('/payments', paymentData);
 
       // Create visit
@@ -1217,7 +1169,7 @@ export default function ReceptionistDashboard() {
       setReturningPatientSearch('');
       setReturningPatientResults([]);
     } catch (error: any) {
-      console.error('Error completing returning patient visit:', error);
+
       toast.error(error.message || 'Failed to complete visit');
     } finally {
       setLoading(false);
@@ -1261,10 +1213,8 @@ export default function ReceptionistDashboard() {
       notes: `Returning patient - ${visitType}`
     };
 
-    console.log('🏥 Reception - Creating returning patient visit:', visitData);
     const visitRes = await api.post('/visits', visitData);
-    console.log('✅ Returning patient visit created:', visitRes.data);
-    
+
     if ((visitRes.status !== 200 && visitRes.status !== 201) || visitRes.data.error) {
       throw new Error(visitRes.data.error || 'Failed to create visit');
     }
@@ -1295,7 +1245,7 @@ export default function ReceptionistDashboard() {
       
       setSearchResults(searchRes.data.patients || []);
     } catch (error: any) {
-      console.error('Search error:', error);
+
       toast.error(error.response?.data?.error || 'Failed to search patients');
     } finally {
       setLoading(false);
@@ -1412,7 +1362,6 @@ export default function ReceptionistDashboard() {
         notes: `${visitType} - No consultation fee required`
       };
 
-      console.log('🏥 Reception - Creating visit without payment:', visitData);
       await api.post('/visits', visitData);
 
       // Show success message with destination
@@ -1440,7 +1389,7 @@ export default function ReceptionistDashboard() {
       // Refresh data
       fetchData(false);
     } catch (error: any) {
-      console.error('Error creating visit:', error);
+
       toast.error(error.response?.data?.error || 'Failed to create visit');
     } finally {
       setLoading(false);
@@ -1450,7 +1399,7 @@ export default function ReceptionistDashboard() {
   const completePatientRegistration = async () => {
     // Prevent multiple submissions
     if (loading) {
-      console.log('⚠️ Registration already in progress, ignoring duplicate click');
+
       return;
     }
 
@@ -1460,8 +1409,6 @@ export default function ReceptionistDashboard() {
       return;
     }
 
-    console.log('✅ Starting patient registration with payment method:', paymentForm.payment_method);
-    
     // Get phone number BEFORE closing dialog (if mobile money)
     let mobilePhoneNumber = '';
     if (['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'Halopesa'].includes(paymentForm.payment_method)) {
@@ -1508,7 +1455,7 @@ export default function ReceptionistDashboard() {
       // Check for errors (201 is success for creation)
       if (patientRes.data.error) {
         const patientError = new Error(patientRes.data.error || 'Failed to register patient');
-        console.error('Patient registration error:', patientError);
+
         toast.error(`Registration failed: ${patientError.message}`);
         return;
       }
@@ -1516,15 +1463,14 @@ export default function ReceptionistDashboard() {
       // Get the patient ID from response (backend returns patient object)
       const patientId = patientRes.data.patient?.id || patientRes.data.patientId;
       if (!patientId) {
-        console.error('Patient response:', patientRes.data);
+
         toast.error('Patient registered but ID not returned');
         return;
       }
 
       // Handle Mobile Money Payment - Initiate payment after patient is created
       if (['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'Halopesa'].includes(paymentForm.payment_method)) {
-        console.log('Mobile Money payment detected - initiating payment flow');
-        
+
         // Phone number already validated and captured before dialog closed
         try {
           toast.info(`Initiating ${paymentForm.payment_method} payment...`);
@@ -1543,14 +1489,7 @@ export default function ReceptionistDashboard() {
           const response = await mobilePaymentService.initiatePayment(paymentRequest);
 
           if (response.success && response.transactionId) {
-            console.log('Mobile payment initiated:', {
-              transactionId: response.transactionId,
-              orderId: response.orderId,
-              patientId: patientId,
-              status: response.status,
-              testMode: (response as any).testMode
-            });
-            
+
             // Check if test mode - payment is already completed
             if ((response as any).testMode) {
               toast.success('✅ Payment completed! Patient added to nurse queue.');
@@ -1617,7 +1556,7 @@ export default function ReceptionistDashboard() {
                   setTimeout(() => checkPayment(attempt + 1, maxAttempts), 2000);
                 }
               } catch (error) {
-                console.error('Payment status check error:', error);
+
                 setTimeout(() => checkPayment(attempt + 1, maxAttempts), 2000);
               }
             };
@@ -1635,8 +1574,7 @@ export default function ReceptionistDashboard() {
           }
           
         } catch (error: any) {
-          console.error('Mobile money payment error:', error);
-          
+
           // Check if error response has the ZenoPay API error message
           const errorMessage = error?.response?.data?.message || 
                               error?.message || 
@@ -1713,14 +1651,10 @@ export default function ReceptionistDashboard() {
           overall_status: 'Active',
           notes: `Walk-in patient - ${visitType || 'Consultation'}`
         };
-        
-        console.log('🏥 Reception - Creating walk-in visit:', visitData);
-        
+
         // Create visit
         const visitRes = await api.post('/visits', visitData);
-        
-        console.log('✅ Walk-in visit created:', visitRes.data);
-        
+
         if (!visitRes.data.error) {
           toast.success(`${registerForm.full_name} registered and sent to nurse queue!`);
         } else {
@@ -1748,7 +1682,7 @@ export default function ReceptionistDashboard() {
 
       logActivity('patient.register', { patient_id: patientId, full_name: registerForm.full_name, amount_paid: amountPaid });
     } catch (error: any) {
-      console.error('Registration error:', error);
+
       const errorMessage = error.response?.data?.error || error.response?.data?.details || error.message || 'Unknown error';
       toast.error(`Failed to register patient: ${errorMessage}`);
     } finally {
@@ -1774,9 +1708,7 @@ export default function ReceptionistDashboard() {
         reason: appointmentForm.reason || null,
         notes: null
       };
-      
-      console.log('Creating appointment with data:', appointmentData);
-      
+
       const appointmentRes = await api.post('/appointments', appointmentData);
       
       if (appointmentRes.data.error) {
@@ -1789,8 +1721,8 @@ export default function ReceptionistDashboard() {
         throw new Error('Appointment created but ID not returned');
       }
       
-      // console.log('New appointment created:', newAppointment);
-      // console.log('Appointment date type:', typeof newAppointment.appointment_date, 'value:', newAppointment.appointment_date);
+      // 
+      // 
 
       // Create patient visit workflow for appointment (starts at reception for check-in)
       try {
@@ -1805,7 +1737,7 @@ export default function ReceptionistDashboard() {
         
         await api.post('/visits', visitData);
       } catch (visitError: any) {
-        console.error('Error creating patient visit:', visitError);
+
         // Don't fail the appointment creation if visit creation fails
       }
 
@@ -1826,7 +1758,7 @@ export default function ReceptionistDashboard() {
       // Refresh data in background
       fetchData(false);
     } catch (error: any) {
-      console.error('Booking error:', error);
+
       toast.error(`Failed to book appointment: ${error.message || 'Unknown error'}`);
     }
   };
@@ -3256,7 +3188,7 @@ export default function ReceptionistDashboard() {
                             setDirectPharmacyResults([]);
                             fetchData(false);
                           } catch (error: any) {
-                            console.error('Error sending to pharmacy:', error);
+
                             toast.error(error.response?.data?.error || 'Failed to send to pharmacy');
                           }
                         }}

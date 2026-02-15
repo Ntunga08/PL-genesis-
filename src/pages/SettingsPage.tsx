@@ -27,7 +27,7 @@ export default function SettingsPage() {
         setPreviewUrl(response.data.logo_url);
       }
     } catch (error) {
-      console.error('Error fetching logo:', error);
+
     }
   };
 
@@ -74,7 +74,7 @@ export default function SettingsPage() {
       // Dispatch custom event to update logo everywhere without page reload
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: { logoUrl: previewUrl } }));
     } catch (error: any) {
-      console.error('Error uploading logo:', error);
+
       toast.error('Failed to upload logo');
     } finally {
       setUploading(false);

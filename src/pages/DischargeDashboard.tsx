@@ -89,7 +89,7 @@ export default function DischargeDashboard() {
       });
 
     } catch (error) {
-      console.error('Error fetching discharge data:', error);
+
       toast.error('Failed to load discharge data');
     } finally {
       setLoading(false);
@@ -144,7 +144,7 @@ export default function DischargeDashboard() {
             status: 'Scheduled'
           });
         } catch (appointmentError) {
-          console.error('Error creating follow-up appointment:', appointmentError);
+
           toast.error('Discharge completed but failed to create follow-up appointment');
         }
       }
@@ -156,7 +156,7 @@ export default function DischargeDashboard() {
       // Update local state
       setVisits(prev => prev.filter(v => v.id !== selectedVisit.id));
     } catch (error) {
-      console.error('Error processing discharge:', error);
+
       toast.error('Failed to process discharge');
     }
   };

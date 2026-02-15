@@ -16,7 +16,6 @@ export default function Auth() {
   const location = useLocation();
   
   // Debug: log renders
-  console.log('Auth page render - user:', !!user, 'loading:', loading);
 
   // Redirect if already logged in - using useEffect to avoid render-phase updates
   useEffect(() => {

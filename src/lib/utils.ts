@@ -35,11 +35,11 @@ async function processActivityQueue() {
       } catch (error: any) {
         // If rate limited, put it back and wait longer
         if (error.response?.status === 429) {
-          console.warn('Activity logging rate limited, will retry');
+
           activityLogQueue.unshift(log); // Put back at front
           await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
         } else {
-          console.warn('Failed to log activity', log.action, error);
+
         }
       }
     }
@@ -54,6 +54,8 @@ export async function logActivity(action: string, details?: Record<string, any>)
   
   // Start processing if not already running
   if (!isProcessingQueue) {
-    processActivityQueue().catch(err => console.warn('Activity queue error:', err));
+    processActivityQueue().catch(() => {
+      // Silently handle errors
+    });
   }
 }

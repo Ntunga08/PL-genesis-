@@ -52,7 +52,7 @@ export default function LabDashboard() {
       const { data } = await api.get('/labs/services');
       setLabTestServices(data.services || []);
     } catch (error) {
-      console.error('Error fetching lab test services:', error);
+
       // Don't show error toast, just log it
     }
   };
@@ -123,23 +123,6 @@ export default function LabDashboard() {
 
       setStats({ pending: finalPending, inProgress, completed });
 
-      console.log('Lab tests data:', {
-        raw: testsData?.length || 0,
-        unique: uniqueTests.length,
-        active: activeTests.length,
-        visitsWithoutTests: visitsWithoutTests.length,
-        completed: completed,
-        filtered: uniqueTests.length - activeTests.length,
-        timestamp: new Date().toISOString(),
-        sample: activeTests.slice(0, 3).map(t => ({ 
-          id: t.id, 
-          name: t.test_name, 
-          patient: t.patient?.full_name,
-          status: t.status 
-        })),
-        samplePatientFound: activeTests.some(t => t.patient?.full_name === 'Lab Test Patient')
-      });
-
       setLabTests(activeTests);
 
       // Group tests by patient
@@ -173,7 +156,7 @@ export default function LabDashboard() {
       
       setGroupedTests(grouped);
     } catch (error) {
-      console.error('Error fetching data:', error);
+
       toast.error('Failed to load lab tests');
     } finally {
       setLoading(false);
@@ -277,7 +260,7 @@ export default function LabDashboard() {
         }
       }));
     } catch (error) {
-      console.error('Error adding test:', error);
+
       toast.error('Failed to add test');
     }
   };
@@ -368,7 +351,7 @@ export default function LabDashboard() {
         fetchData();
       }, 1000);
     } catch (error) {
-      console.error('Error submitting batch results:', error);
+
       toast.error('Failed to submit batch results');
     }
   };
@@ -416,26 +399,22 @@ export default function LabDashboard() {
         toast.error('No active visit found for this patient');
       }
     } catch (error) {
-      console.error('Error discharging patient:', error);
+
       toast.error('Failed to discharge patient');
     }
   };
 
   const updatePatientWorkflow = async (patientId: string) => {
     try {
-      console.log('🔄 Starting workflow update for patient:', patientId);
-      
+
       // Get active visits for this patient that are in lab stage
       const { data } = await api.get(`/visits?patient_id=${patientId}&current_stage=lab&limit=1`);
       const visits = data.visits || [];
 
-      console.log('📋 Visits found:', visits.length, visits);
-
       if (visits && visits.length > 0) {
         const visit = visits[0];
         const visitId = visit.id;
-        console.log('✏️  Updating visit:', visitId);
-        
+
         // IMPROVED WORKFLOW: Determine where to send patient based on who ordered the tests
         // 1. Doctor ordered tests → Send back to doctor for review
         // 2. Nurse ordered tests → Send back to nurse for next steps
@@ -459,20 +438,7 @@ export default function LabDashboard() {
         );
         
         const isLabOnlyVisit = visit.visit_type === 'Lab Only';
-        
-        console.log('🔍 Workflow Decision:', {
-          visitId: visit.id,
-          doctor_status: visit.doctor_status,
-          nurse_status: visit.nurse_status,
-          doctor_id: visit.doctor_id,
-          notes: visit.notes,
-          visit_type: visit.visit_type,
-          orderedByDoctor,
-          orderedByNurse,
-          'doctor_status !== Not Required': visit.doctor_status !== 'Not Required',
-          'has doctor_id': !!visit.doctor_id
-        });
-        
+
         let updateData;
         if (orderedByDoctor) {
           // Lab tests ordered by doctor → send back to doctor for review
@@ -482,7 +448,7 @@ export default function LabDashboard() {
             current_stage: 'doctor',
             doctor_status: 'Pending Review'
           };
-          console.log('📤 Sending to DOCTOR for review (ordered by doctor):', updateData);
+
         } else if (orderedByNurse && !isLabOnlyVisit) {
           // Lab tests ordered by nurse in consultation → send back to nurse for review
           updateData = {
@@ -491,7 +457,7 @@ export default function LabDashboard() {
             current_stage: 'nurse',
             nurse_status: 'Pending Review' // Nurse needs to review lab results
           };
-          console.log('📤 Sending back to NURSE for review (consultation with nurse-ordered tests):', updateData);
+
         } else if (isLabOnlyVisit || orderedByNurse) {
           // Lab Only visits or nurse-ordered direct lab → send to billing
           updateData = {
@@ -500,7 +466,7 @@ export default function LabDashboard() {
             current_stage: 'billing',
             billing_status: 'Pending'
           };
-          console.log('📤 Sending to BILLING (Lab Only visit or direct nurse order):', updateData);
+
         } else {
           // Direct lab orders (Lab Only visits) → send to billing
           // Consultation visits with unclear routing → send to billing as fallback
@@ -510,13 +476,11 @@ export default function LabDashboard() {
             current_stage: 'billing',
             billing_status: 'Pending'
           };
-          console.log('📤 Sending to BILLING (direct lab order or fallback):', updateData);
+
         }
         
         const response = await api.put(`/visits/${visitId}`, updateData);
-        
-        console.log('✅ Visit updated successfully!', response.data);
-        
+
         if (orderedByDoctor) {
           toast.success('Lab tests completed. Patient sent back to doctor for review.');
         } else if (orderedByNurse) {
@@ -528,8 +492,7 @@ export default function LabDashboard() {
         // Refresh the lab dashboard to remove completed patient from queue
         await fetchData(false);
       } else {
-        console.warn('⚠️  No active lab visit found, creating new visit for patient:', patientId);
-        
+
         // Get the test to find the doctor
         const test = selectedPatientTests[0];
         if (test && test.doctor_id) {
@@ -545,11 +508,9 @@ export default function LabDashboard() {
             doctor_status: 'Pending Review',
             overall_status: 'Active'
           };
-          
-          console.log('📤 Creating new visit:', newVisit);
+
           const response = await api.post('/visits', newVisit);
-          console.log('✅ Visit created successfully!', response.data);
-          
+
           // Update the lab tests with the new visit_id
           if (response.data.visit && response.data.visit.id) {
             for (const test of selectedPatientTests) {
@@ -566,8 +527,8 @@ export default function LabDashboard() {
         }
       }
     } catch (error: any) {
-      console.error('❌ Error updating patient workflow:', error);
-      console.error('Error details:', error.response?.data);
+
+
       toast.error(`Failed to update workflow: ${error.response?.data?.error || error.message}`);
       // Don't throw error - results were already saved successfully
     }
@@ -586,19 +547,13 @@ export default function LabDashboard() {
 
     // If test is completed and we have patient ID, update workflow
     if (newStatus === 'Completed' && patientId) {
-      console.log('Updating patient visit workflow for lab completion:', {
-        patientId,
-        testId,
-        newStatus,
-        currentTime: new Date().toISOString()
-      });
 
       // Check if patient already has active prescriptions before proceeding
       const { data: prescData } = await api.get(`/prescriptions?patient_id=${patientId}&status=Pending,Active&limit=1`);
       const existingPrescriptions = prescData.prescriptions || [];
 
       if (existingPrescriptions && existingPrescriptions.length > 0) {
-        console.log('Patient already has active prescriptions:', existingPrescriptions.length);
+
         toast.success('Lab test completed - patient already has prescriptions assigned');
         fetchData();
         return;
@@ -608,22 +563,9 @@ export default function LabDashboard() {
       const { data: visitData } = await api.get(`/visits?patient_id=${patientId}&current_stage=lab&limit=5`);
       const visits = visitData.visits || [];
 
-      console.log('Found patient visits for workflow update:', {
-        patientId,
-        visitsFound: visits?.length || 0,
-        visits: visits?.map(v => ({
-          id: v.id,
-          current_stage: v.current_stage,
-          overall_status: v.overall_status,
-          lab_status: v.lab_status
-        }))
-      });
-
       if (visits && visits.length > 0) {
         // Find the most appropriate visit to update (prefer one in lab stage)
         let visitToUpdate = visits.find(v => v.current_stage === 'lab') || visits[0];
-
-        console.log('Updating visit:', visitToUpdate.id, 'from stage:', visitToUpdate.current_stage);
 
         try {
           await api.put(`/visits/${visitToUpdate.id}`, {
@@ -632,15 +574,14 @@ export default function LabDashboard() {
             current_stage: 'doctor',
             doctor_status: 'Pending Review'
           });
-          console.log('Successfully updated patient visit workflow');
+
           toast.success('Lab tests completed. Patient sent back to doctor for review.');
         } catch (workflowError) {
-          console.error('Failed to update patient visit workflow:', workflowError);
+
           toast.error('Test completed but failed to update workflow');
         }
       } else {
-        console.log('No active patient visits found for lab workflow update');
-        console.log('Creating a new patient visit for lab workflow...');
+
 
         // Create a patient visit if none exists
         try {
@@ -655,10 +596,10 @@ export default function LabDashboard() {
             doctor_status: 'Pending',
             lab_completed_at: new Date().toISOString()
           });
-          console.log('Created patient visit for lab workflow');
+
           toast.success('Lab result submitted and patient moved to doctor consultation');
         } catch (createError) {
-          console.error('Failed to create patient visit:', createError);
+
           toast.error('Test completed but failed to create patient visit');
         }
       }
@@ -910,8 +851,8 @@ export default function LabDashboard() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      console.log('View Tests clicked for patient:', patientId);
-                                      console.log('All tests for patient:', tests);
+
+
                                       // Show all tests for this patient (including completed ones)
                                       setSelectedPatientTests(tests);
                                       setIsViewMode(true); // Set view mode
@@ -1187,7 +1128,7 @@ export default function LabDashboard() {
                                   fetchData(false);
                                 }, 500);
                               } catch (error) {
-                                console.error('Error cancelling test:', error);
+
                                 toast.error('Failed to cancel test');
                               }
                             }

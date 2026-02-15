@@ -69,7 +69,7 @@ export default function AdminReports() {
         }));
       }
     } catch (error) {
-      console.log('Using default settings');
+
     }
   };
 
@@ -129,9 +129,7 @@ export default function AdminReports() {
       const labTestsData = labTestsRes.status === 'fulfilled' ? (labTestsRes.value.data.labTests || labTestsRes.value.data.tests || []) : [];
       const invoicesData = invoicesRes.status === 'fulfilled' ? (invoicesRes.value.data.invoices || []) : [];
 
-      console.log('Prescriptions Data:', prescriptionsData);
-      console.log('Lab Tests Data:', labTestsData);
-      console.log('Invoices Data:', invoicesData);
+
 
       // Calculate total revenue from invoices
       const totalRevenue = invoicesData.reduce((sum: number, inv: any) => sum + (Number(inv.total_amount) || 0), 0);
@@ -142,10 +140,8 @@ export default function AdminReports() {
       // Calculate total lab test count (keeping as count since lab tests don't have individual prices in the table)
       const totalLabTestCount = labTestsData.length;
 
-      console.log('Total Prescriptions:', prescriptionsData.length);
-      console.log('Total Revenue:', totalRevenue);
-      console.log('Total Invoice Amount:', totalInvoiceAmount);
-      console.log('Total Lab Tests:', totalLabTestCount);
+
+
 
       setReportData({
         patients: patientsData,
@@ -166,16 +162,8 @@ export default function AdminReports() {
         totalRevenue: totalRevenue
       });
 
-      // Log any failed requests
-      if (patientsRes.status === 'rejected') console.warn('Failed to fetch patients:', patientsRes.reason);
-      if (appointmentsRes.status === 'rejected') console.warn('Failed to fetch appointments:', appointmentsRes.reason);
-      if (visitsRes.status === 'rejected') console.warn('Failed to fetch visits:', visitsRes.reason);
-      if (prescriptionsRes.status === 'rejected') console.warn('Failed to fetch prescriptions:', prescriptionsRes.reason);
-      if (labTestsRes.status === 'rejected') console.warn('Failed to fetch lab tests:', labTestsRes.reason);
-      if (invoicesRes.status === 'rejected') console.warn('Failed to fetch invoices:', invoicesRes.reason);
-
     } catch (error) {
-      console.error('Error fetching report data:', error);
+
       toast.error('Failed to load report data');
     } finally {
       setLoading(false);

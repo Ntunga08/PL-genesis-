@@ -71,7 +71,7 @@ export default function PaymentSuccess() {
         }
       }
     } catch (error) {
-      console.error('Payment verification error:', error);
+
       setPaymentStatus('failed');
       toast.error('Failed to verify payment');
     } finally {
@@ -87,10 +87,10 @@ export default function PaymentSuccess() {
     try {
       // Payment recording not yet fully implemented in backend
       // This would need a payment recording endpoint
-      console.log('Payment verified:', { invoiceId, transactionId, amount });
+
       toast.info('Payment verified - recording feature coming soon');
     } catch (error) {
-      console.error('Error updating payment in database:', error);
+
       toast.error('Payment verified but failed to update records');
     }
   };

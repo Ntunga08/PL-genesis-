@@ -54,7 +54,7 @@ interface UseWebSocketOptions {
  *   channel: 'doctor-queue',
  *   event: 'visit.updated',
  *   onMessage: (data) => {
- *     console.log('Visit updated:', data);
+ *     
  *     // Update local state
  *   }
  * });
@@ -80,7 +80,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
 
     // Listen for event
     channelInstance.listen(`.${event}`, (data: any) => {
-      console.log(`[WebSocket] ${channel}:${event}`, data);
+
       callbackRef.current(data);
     });
 

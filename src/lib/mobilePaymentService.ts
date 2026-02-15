@@ -64,19 +64,6 @@ class ZenoPayService {
   async initiatePayment(request: MobilePaymentRequest): Promise<MobilePaymentResponse> {
     const { phoneNumber, amount, invoiceId, patientId, paymentType, paymentMethod, description, service_id, service_name, quantity, unit_price } = request;
 
-    console.log('🚀 Initiating mobile payment via backend:', {
-      phoneNumber,
-      amount,
-      invoiceId,
-      patientId,
-      paymentType,
-      paymentMethod,
-      service_id,
-      service_name,
-      quantity,
-      unit_price
-    });
-
     try {
       const formattedPhone = this.formatPhoneNumber(phoneNumber);
 
@@ -99,7 +86,7 @@ class ZenoPayService {
       });
 
       if (response.data.success) {
-        console.log('✅ Payment initiated successfully via backend');
+
         return {
           success: true,
           message: `${paymentMethod} payment request sent successfully`,
@@ -116,7 +103,7 @@ class ZenoPayService {
         error: 'PAYMENT_FAILED'
       };
     } catch (error: any) {
-      console.error('💥 Payment initiation error:', error.message);
+
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Failed to initiate payment',
@@ -148,7 +135,7 @@ class ZenoPayService {
         status: 'pending'
       };
     } catch (error: any) {
-      console.error('Payment status check error:', error.message);
+
       return {
         success: false,
         message: error.message || 'Failed to check payment status',
@@ -160,26 +147,25 @@ class ZenoPayService {
   private async updatePaymentStatus(orderId: string, status: string): Promise<void> {
     try {
       // Payment webhook processing not yet fully implemented
-      console.log('Payment status update:', { orderId, status });
+
       // TODO: Implement payment status update via MySQL API
     } catch (error) {
-      console.error('Error updating payment status:', error);
+
     }
   }
 
   private async updateInvoiceAfterPayment(invoiceId: string, amount: number): Promise<void> {
     try {
       // Invoice update after payment not yet fully implemented
-      console.log('Invoice update after payment:', { invoiceId, amount });
+
       // TODO: Implement invoice update via MySQL API
     } catch (error) {
-      console.error('Error updating invoice after payment:', error);
+
     }
   }
 
   async handlePaymentWebhook(webhookData: PaymentWebhookData): Promise<boolean> {
     try {
-      console.log('ZenoPay webhook received:', webhookData);
 
       // Here you would typically:
       // 1. Verify the webhook is from ZenoPay (check x-api-key header)
@@ -190,7 +176,7 @@ class ZenoPayService {
       // For now, we'll simulate the webhook processing
       return true;
     } catch (error) {
-      console.error('ZenoPay webhook processing error:', error);
+
       return false;
     }
   }

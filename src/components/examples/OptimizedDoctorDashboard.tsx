@@ -49,7 +49,7 @@ export function OptimizedDoctorDashboard() {
     enabled: !!user?.id,
     pollInterval: 60000, // Poll every 60 seconds
     onSuccess: (data) => {
-      console.log(`Loaded ${data.length} appointments`);
+
     }
   });
 
@@ -88,7 +88,7 @@ export function OptimizedDoctorDashboard() {
           pending: response.data.today_scheduled || 0
         });
       } catch (error) {
-        console.error('Error fetching stats:', error);
+
       }
     };
 
@@ -105,8 +105,7 @@ export function OptimizedDoctorDashboard() {
     event: 'visit.updated',
     enabled: !!user?.id,
     onMessage: (data) => {
-      console.log('Visit updated via WebSocket:', data);
-      
+
       // Refresh visits if it affects doctor queue
       if (data.current_stage === 'doctor') {
         refreshVisits();
@@ -119,7 +118,7 @@ export function OptimizedDoctorDashboard() {
     event: 'appointment.updated',
     enabled: !!user?.id,
     onMessage: (data) => {
-      console.log('Appointment updated via WebSocket:', data);
+
       refreshAppointments();
     }
   });
@@ -139,7 +138,7 @@ export function OptimizedDoctorDashboard() {
       
       toast.success('Consultation completed');
     } catch (error) {
-      console.error('Error completing consultation:', error);
+
       toast.error('Failed to complete consultation');
     }
   };

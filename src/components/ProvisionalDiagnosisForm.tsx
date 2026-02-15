@@ -101,7 +101,7 @@ export function ProvisionalDiagnosisForm({
             setHasDraft(true);
           }
         } catch (error) {
-          console.warn('Failed to parse draft data:', error);
+
         }
       }
 

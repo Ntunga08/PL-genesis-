@@ -39,7 +39,7 @@ export function PaymentDialog({ open, onOpenChange, appointment, onPaymentComple
         setConsultationFee(Number(data.value));
       }
     } catch (error) {
-      console.log('Using default consultation fee');
+
     }
   };
 
@@ -68,7 +68,7 @@ export function PaymentDialog({ open, onOpenChange, appointment, onPaymentComple
       onPaymentComplete(appointment.id);
       onOpenChange(false);
     } catch (error) {
-      console.error('Payment error:', error);
+
       toast.error('Failed to process payment');
     } finally {
       setLoading(false);

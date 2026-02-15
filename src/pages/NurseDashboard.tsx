@@ -102,9 +102,8 @@ export default function NurseDashboard() {
 
   // FIXED: Professional lab report print function that actually works
   const printLabReport = (patient: any, labTests: any[]) => {
-    console.log('🖨️ Starting print for patient:', patient);
-    console.log('🧪 Lab tests:', labTests);
-    
+
+
     // Validate required data
     if (!patient) {
       toast.error('Patient data is required for printing');
@@ -115,9 +114,7 @@ export default function NurseDashboard() {
       toast.error('No lab test data available for printing');
       return;
     }
-    
-    console.log('✅ Print validation passed - Patient:', patient.full_name, 'Tests:', labTests.length);
-    
+
     // Use static data (no API calls that can fail)
     const billingInfo = null;
 
@@ -137,10 +134,8 @@ export default function NurseDashboard() {
     const dateStr = today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
     const reportId = `HMC-LAB-${dateStr}-${String(patient?.id || '000').slice(-8)}`;
 
-    console.log('📋 Generated report ID:', reportId);
-    console.log('🏥 Using hospital settings:', hospitalSettings);
-    console.log('💳 Using billing info:', billingInfo);
-    console.log('🧪 Lab tests to print:', labTests.map(t => ({ name: t.test_name, status: t.status, results: !!t.results })));
+
+
 
     // Generate current date/time strings safely
     const currentDate = today.toLocaleDateString();
@@ -552,13 +547,11 @@ export default function NurseDashboard() {
 
     // Add print content to page
     document.body.appendChild(printDiv);
-    
-    console.log('✅ Print content added to page');
-    console.log('📄 Print content preview:', printDiv.innerHTML.substring(0, 500) + '...');
+
 
     // Trigger print
     setTimeout(() => {
-      console.log('🖨️ Triggering print dialog');
+
       window.print();
       toast.success(`Lab report for ${patient.full_name} opened for printing`);
       
@@ -572,7 +565,7 @@ export default function NurseDashboard() {
         if (styleElement) {
           styleElement.remove();
         }
-        console.log('🧹 Lab report content and styles cleaned up');
+
       }, 1000);
     }, 100);
   };
@@ -977,7 +970,7 @@ export default function NurseDashboard() {
                 testDate = test.results?.test_date || '';
               }
             } catch (e) {
-              console.error('Error parsing test results:', e);
+
               results = {};
             }
 
@@ -1235,7 +1228,7 @@ export default function NurseDashboard() {
             testDate = test.results?.test_date || '';
           }
         } catch (e) {
-          console.error('Error parsing test results:', e);
+
           results = {};
         }
 
@@ -1416,14 +1409,12 @@ export default function NurseDashboard() {
 
   const handleCompleteQuickService = async (visit: any) => {
     try {
-      console.log('🔄 Completing Quick Service for visit:', visit);
-      
+
       // Get patient services for this visit
       const visitServices = patientServices[visit.id] || [];
-      console.log('📋 Visit services:', visitServices);
-      
+
       if (visitServices.length === 0) {
-        console.log('⚠️ No services found for visit, trying to fetch...');
+
         // Try to fetch services if not already loaded
         try {
           const servicesRes = await api.get(`/patient-services?patient_id=${visit.patient_id}&service_date=${visit.visit_date}`);
@@ -1434,31 +1425,27 @@ export default function NurseDashboard() {
             visitServices.push(...freshServices);
           }
         } catch (error) {
-          console.error('Failed to fetch services:', error);
+
         }
       }
       
       // Always fetch fresh services data to ensure we have the latest forms
       const servicesRes = await api.get('/services');
       const allServices = servicesRes.data.services || [];
-      
-      console.log('📋 Available services:', allServices.length);
-      
+
       // Find the primary service from patient services
       let primaryService = null;
       if (visitServices.length > 0) {
         const patientService = visitServices[0];
         primaryService = allServices.find((s: any) => s.id === patientService.service_id);
-        console.log('🎯 Found primary service from patient services:', primaryService);
+
       }
       
       // Fallback: try to extract service name from visit notes if no patient services
       if (!primaryService) {
         const serviceMatch = visit.notes?.match(/Quick Service: ([^-,]+)/);
         const serviceName = serviceMatch ? serviceMatch[1].trim() : null;
-        
-        console.log('🔍 Fallback - extracted service name from notes:', serviceName);
-        
+
         if (serviceName) {
           // Try exact match first
           primaryService = allServices.find((s: any) => s.service_name === serviceName);
@@ -1471,11 +1458,9 @@ export default function NurseDashboard() {
           }
         }
       }
-      
-      console.log('🎯 Final primary service:', primaryService);
-      console.log('📝 Service requires form:', primaryService?.requires_form);
-      console.log('📄 Service has template:', !!primaryService?.form_template);
-      
+
+
+
       // Check if service requires form or create default form for medical services
       let shouldShowForm = false;
       let formTemplate = null;
@@ -1483,7 +1468,7 @@ export default function NurseDashboard() {
       if (primaryService && primaryService.requires_form && primaryService.form_template) {
         shouldShowForm = true;
         formTemplate = primaryService.form_template;
-        console.log('✅ Using service-specific form template');
+
       } else if (primaryService) {
         // Create default forms for common medical services that don't have templates
         const serviceType = primaryService.service_type?.toLowerCase() || '';
@@ -1504,7 +1489,7 @@ export default function NurseDashboard() {
               { name: 'notes', label: 'Additional Notes', type: 'textarea', required: false }
             ]
           };
-          console.log('✅ Using default vaccination form template');
+
         } else if (serviceType === 'injection' || serviceName.includes('injection') || serviceName.includes('shot')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1518,7 +1503,7 @@ export default function NurseDashboard() {
               { name: 'notes', label: 'Additional Notes', type: 'textarea', required: false }
             ]
           };
-          console.log('✅ Using default injection form template');
+
         } else if (serviceType === 'procedure' || serviceName.includes('wound') || serviceName.includes('dressing')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1534,7 +1519,7 @@ export default function NurseDashboard() {
               { name: 'complications', label: 'Complications', type: 'textarea', required: false }
             ]
           };
-          console.log('✅ Using default procedure form template');
+
         } else if (serviceType === 'surgery' || serviceName.includes('surgery') || serviceName.includes('surgical') || serviceName.includes('operation')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1550,7 +1535,7 @@ export default function NurseDashboard() {
               { name: 'follow_up_date', label: 'Follow-up Date', type: 'date', required: true }
             ]
           };
-          console.log('✅ Using default surgery form template');
+
         } else if (serviceName.includes('pressure') || serviceName.includes('bp') || serviceName.includes('blood pressure')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1564,7 +1549,7 @@ export default function NurseDashboard() {
               { name: 'recommendations', label: 'Recommendations', type: 'textarea', required: false }
             ]
           };
-          console.log('✅ Using default blood pressure form template');
+
         } else if (serviceName.includes('bed') || serviceName.includes('admission') || serviceName.includes('ward')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1578,7 +1563,7 @@ export default function NurseDashboard() {
               { name: 'nursing_notes', label: 'Nursing Notes', type: 'textarea', required: true }
             ]
           };
-          console.log('✅ Using default bed assignment form template');
+
         } else if (serviceName.includes('iv') || serviceName.includes('drip') || serviceName.includes('infusion')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1592,7 +1577,7 @@ export default function NurseDashboard() {
               { name: 'patient_response', label: 'Patient Response', type: 'textarea', required: false }
             ]
           };
-          console.log('✅ Using default IV therapy form template');
+
         } else if (serviceType === 'surgery' || serviceName.includes('surgery') || serviceName.includes('surgical') || serviceName.includes('operation')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1609,7 +1594,7 @@ export default function NurseDashboard() {
               { name: 'discharge_condition', label: 'Discharge Condition', type: 'select', required: true, options: ['Stable', 'Critical', 'Observation Required'] }
             ]
           };
-          console.log('✅ Using default surgery form template');
+
         } else if (serviceName.includes('pressure') || serviceName.includes('bp') || serviceName.includes('blood pressure')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1626,7 +1611,7 @@ export default function NurseDashboard() {
               { name: 'follow_up_required', label: 'Follow-up Required', type: 'select', required: true, options: ['Yes', 'No'] }
             ]
           };
-          console.log('✅ Using default blood pressure form template');
+
         } else if (serviceName.includes('bed') || serviceName.includes('admission') || serviceName.includes('ward')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1643,7 +1628,7 @@ export default function NurseDashboard() {
               { name: 'nursing_notes', label: 'Nursing Notes', type: 'textarea', required: true }
             ]
           };
-          console.log('✅ Using default bed assignment form template');
+
         } else if (serviceName.includes('iv') || serviceName.includes('drip') || serviceName.includes('infusion')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1660,7 +1645,7 @@ export default function NurseDashboard() {
               { name: 'patient_response', label: 'Patient Response', type: 'textarea', required: false }
             ]
           };
-          console.log('✅ Using default IV therapy form template');
+
         } else if (serviceName.includes('suture') || serviceName.includes('stitch') || serviceName.includes('laceration')) {
           shouldShowForm = true;
           formTemplate = {
@@ -1677,7 +1662,7 @@ export default function NurseDashboard() {
               { name: 'post_care_instructions', label: 'Post-Care Instructions', type: 'textarea', required: true }
             ]
           };
-          console.log('✅ Using default suturing form template');
+
         } else {
           // Generic form for any service we haven't specifically created a form for
           shouldShowForm = true;
@@ -1700,12 +1685,12 @@ export default function NurseDashboard() {
               { name: 'additional_notes', label: 'Additional Notes', type: 'textarea', required: false, placeholder: 'Any additional observations or notes...' }
             ]
           };
-          console.log('✅ Using generic service form template for:', primaryService.service_name);
+
         }
       }
       
       if (shouldShowForm && formTemplate) {
-        console.log('✅ Showing service form dialog');
+
         // Show form dialog
         setSelectedVisitForForm({
           ...visit,
@@ -1716,12 +1701,11 @@ export default function NurseDashboard() {
         setShowServiceFormDialog(true);
         return;
       }
-      
-      console.log('⚠️ No form required - direct discharge');
+
       // No form required - direct discharge
       await dischargeQuickServicePatient(visit);
     } catch (error: any) {
-      console.error('Error completing quick service:', error);
+
       toast.error(error.response?.data?.error || 'Failed to complete service');
     }
   };
@@ -1747,7 +1731,7 @@ export default function NurseDashboard() {
         fetchData(false);
       }, 1000);
     } catch (error: any) {
-      console.error('Error discharging patient:', error);
+
       toast.error(error.response?.data?.error || 'Failed to discharge patient');
     }
   };
@@ -1775,7 +1759,7 @@ export default function NurseDashboard() {
       setSelectedVisitForForm(null);
       setServiceFormTemplate(null);
     } catch (error: any) {
-      console.error('Error saving form:', error);
+
       toast.error(error.response?.data?.error || 'Failed to save form');
     } finally {
       setFormSubmitting(false);
@@ -1803,7 +1787,7 @@ export default function NurseDashboard() {
       
       setSearchResults(response.data.patients || []);
     } catch (error: any) {
-      console.error('Search error:', error);
+
       toast.error(error.response?.data?.error || 'Failed to search patients');
     }
   };
@@ -1833,7 +1817,7 @@ export default function NurseDashboard() {
         const response = await api.get(`/patients?search=${encodeURIComponent(labPatientSearchTerm)}&limit=10`);
         setLabPatientSearchResults(response.data.patients || []);
       } catch (error) {
-        console.error('Error searching lab patients:', error);
+
         setLabPatientSearchResults([]);
       }
     };
@@ -1862,12 +1846,6 @@ export default function NurseDashboard() {
       // Prepare vitals data as JSON string
       const vitalsData = JSON.stringify(vitalsForm);
 
-      console.log('🔄 Updating visit:', visit.id, 'for patient:', selectedPatient.full_name);
-      console.log('📤 Sending update:', {
-        nurse_status: 'Completed',
-        current_stage: 'doctor',
-        doctor_status: 'Pending'
-      });
 
       // Determine next stage based on visit type
       const visitType = visit.visit_type || 'Consultation';
@@ -1897,7 +1875,6 @@ export default function NurseDashboard() {
       
       const response = await api.put(`/visits/${visit.id}`, updateData);
 
-      console.log('✅ Visit updated successfully!', response.data);
       toast.success(successMessage);
       
       // Update local state immediately to remove patient from list
@@ -1924,11 +1901,11 @@ export default function NurseDashboard() {
       
       // Refresh data after a delay to ensure backend has processed
       setTimeout(() => {
-        console.log('🔄 Refreshing nurse dashboard data...');
+
         fetchData(false);
       }, 2000); // Increased to 2 seconds
     } catch (error: any) {
-      console.error('Vitals submission error:', error);
+
       toast.error(error.response?.data?.error || 'Failed to record vital signs');
     }
   };
@@ -1942,7 +1919,7 @@ export default function NurseDashboard() {
       setShowNotesDialog(false);
       setSelectedPatient(null);
     } catch (error) {
-      console.error('Notes submission error:', error);
+
       toast.error('Failed to add notes');
     }
   };
@@ -1974,7 +1951,7 @@ export default function NurseDashboard() {
         department_id: ''
       });
     } catch (error: any) {
-      console.error('Schedule error:', error);
+
       toast.error(error.response?.data?.error || 'Failed to schedule follow-up');
     }
   };
@@ -2017,18 +1994,6 @@ export default function NurseDashboard() {
          v.nurse_status === 'Pending Review' || // Patients returning from lab
          v.nurse_status === '')
       );
-      
-      console.log('👥 Nurse Dashboard - Visits fetched:', {
-        totalFromAPI: allVisits.length,
-        afterFilter: visitsData.length,
-        filtered: allVisits.length - visitsData.length,
-        visits: visitsData.map(v => ({
-          id: v.id,
-          patient: v.patient?.full_name,
-          current_stage: v.current_stage,
-          nurse_status: v.nurse_status
-        }))
-      });
 
       // Fetch today's appointments for this nurse
       const today = new Date().toISOString().split('T')[0];
@@ -2057,7 +2022,7 @@ export default function NurseDashboard() {
           const servicesRes = await api.get(`/patient-services?patient_id=${visit.patient_id}&service_date=${visit.visit_date}`);
           servicesMap[visit.id] = servicesRes.data.services || [];
         } catch (error) {
-          console.error(`Failed to fetch services for visit ${visit.id}:`, error);
+
           servicesMap[visit.id] = [];
         }
       }
@@ -2075,7 +2040,7 @@ export default function NurseDashboard() {
         const labServicesRes = await api.get('/labs/services');
         setAvailableLabTests(labServicesRes.data.services || []);
       } catch (error) {
-        console.error('Failed to fetch lab services:', error);
+
       }
       
       // Count today's appointments - extract date from datetime string
@@ -2115,11 +2080,10 @@ export default function NurseDashboard() {
           setLogoUrl(logoRes.data.logo_url);
         }
       } catch (error) {
-        console.log('Hospital settings not configured yet');
+
       }
 
     } catch (error: any) {
-      console.error('Error fetching nurse data:', error);
 
       // Set empty data to prevent crashes
       setPendingVisits([]);
@@ -2253,10 +2217,8 @@ export default function NurseDashboard() {
                           // Fetch lab test results for this patient
                           const response = await api.get(`/labs?patient_id=${visit.patient_id}`);
                           const tests = response.data.labTests || response.data.tests || [];
-                          
-                          console.log('🔬 Raw lab tests from API:', tests);
-                          console.log('🔬 Visit details:', { id: visit.id, patient_id: visit.patient_id, visit_type: visit.visit_type });
-                          
+
+
                           // Filter to only show:
                           // 1. Completed tests
                           // 2. Tests from this specific visit (nurse-ordered, not doctor-ordered)
@@ -2271,30 +2233,14 @@ export default function NurseDashboard() {
                             const visitDate = new Date(visit.created_at);
                             const testDate = new Date(t.created_at);
                             const isRecentTest = testDate >= visitDate;
-                            
-                            console.log('🔬 Test filter check:', {
-                              test_id: t.id,
-                              test_name: t.test_name,
-                              status: t.status,
-                              isCompleted,
-                              visit_id: t.visit_id,
-                              isFromThisVisit,
-                              isLabOnlyVisit,
-                              isNurseSentToLab,
-                              isRecentTest,
-                              visitDate: visit.created_at,
-                              testDate: t.created_at
-                            });
-                            
+
                             // Show completed tests if:
                             // 1. From this specific visit, OR
                             // 2. Lab Only visit type, OR  
                             // 3. Nurse sent to lab and test was created after visit
                             return isCompleted && (isFromThisVisit || isLabOnlyVisit || (isNurseSentToLab && isRecentTest));
                           });
-                          
-                          console.log('🔬 Filtered completed tests:', completedTests);
-                          
+
                           if (completedTests.length === 0) {
                             toast.info('No completed lab tests found for this visit');
                             return;
@@ -2304,7 +2250,7 @@ export default function NurseDashboard() {
                           setSelectedVisitForResults(visit);
                           setShowLabResultsDialog(true);
                         } catch (error) {
-                          console.error('Error fetching lab results:', error);
+
                           toast.error('Failed to load lab results');
                         }
                       }}
@@ -2375,15 +2321,7 @@ export default function NurseDashboard() {
                       (() => {
                         // Get actual patient services for this visit
                         const visitServices = patientServices[visit.id] || [];
-                        console.log('🔍 Quick Service Visit Debug:', {
-                          visitId: visit.id,
-                          visitType: visit.visit_type,
-                          visitNotes: visit.notes,
-                          visitServices: visitServices,
-                          patientServicesKeys: Object.keys(patientServices),
-                          hasServices: visitServices.length > 0
-                        });
-                        
+
                         // Determine service type from actual services assigned
                         if (visitServices.length > 0) {
                           const primaryService = visitServices[0];
@@ -2425,8 +2363,7 @@ export default function NurseDashboard() {
                         
                         // Always check visit notes as additional fallback (even if services found)
                         const visitNotes = visit.notes?.toLowerCase() || '';
-                        console.log('🔍 Checking visit notes for service type:', visitNotes);
-                        
+
                         if (!visitServices.length || buttonText === 'Complete Service') {
                           // Enhanced fallback to checking visit notes
                           if (visitNotes.includes('vaccination') || visitNotes.includes('vaccine') || visitNotes.includes('immunization')) {
@@ -3043,7 +2980,7 @@ export default function NurseDashboard() {
                     return; // Billing check failed, don't print
                   }
                 } catch (error) {
-                  console.error('Error checking billing status:', error);
+
                   toast.error('Unable to verify billing status');
                   return;
                 }
@@ -3086,11 +3023,10 @@ export default function NurseDashboard() {
                             status: 'Pending',
                             notes: `Lab test: ${test.test_name} - completed and reviewed by nurse`
                           });
-                          
-                          console.log(`✅ Added ${test.test_name} (TSh ${matchingService.base_price}) to patient bill`);
+
                         }
                       } catch (billingError) {
-                        console.error('Error adding lab test to billing:', billingError);
+
                         // Continue with other tests
                       }
                     }
@@ -3111,7 +3047,7 @@ export default function NurseDashboard() {
                   setSelectedVisitForResults(null);
                   setLabTestResults([]);
                 } catch (error) {
-                  console.error('Error sending to billing:', error);
+
                   toast.error('Failed to send patient to billing');
                 }
               }}
@@ -3191,7 +3127,7 @@ export default function NurseDashboard() {
                     // Refresh data
                     fetchData();
                   } catch (error: any) {
-                    console.error('Error sending patient to lab:', error);
+
                     toast.error(error.response?.data?.error || 'Failed to send patient to lab');
                   }
                 }}
@@ -3486,7 +3422,7 @@ export default function NurseDashboard() {
                     // Refresh data in background
                     fetchData();
                   } catch (error: any) {
-                    console.error('Error registering patient:', error);
+
                     toast.error(error.response?.data?.error || 'Failed to register patient');
                   }
                 }}

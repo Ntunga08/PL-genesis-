@@ -156,25 +156,7 @@ export default function PharmacyDashboard() {
       const patientsData = patientsRes.status === 'fulfilled' ? (patientsRes.value.data.patients || []) : [];
       const doctorsData = doctorsRes.status === 'fulfilled' ? (doctorsRes.value.data.profiles || []) : [];
       const patientQueueData = patientQueueRes.status === 'fulfilled' ? (patientQueueRes.value.data.visits || []) : [];
-      
-      console.log('🏥 Pharmacy Dashboard - Prescriptions loaded:', {
-        total: prescriptionsData.length,
-        active: prescriptionsData.filter((p: any) => p.status === 'Active').length,
-        prescriptions: prescriptionsData.map((p: any) => ({
-          id: p.id,
-          patient_id: p.patient_id,
-          status: p.status,
-          visit_id: p.visit_id,
-          visit_stage: p.visit?.current_stage
-        }))
-      });
-      
-      // Log any failed requests
-      if (prescriptionsRes.status === 'rejected') console.warn('Failed to fetch prescriptions:', prescriptionsRes.reason);
-      if (medicationsRes.status === 'rejected') console.warn('Failed to fetch medications:', medicationsRes.reason);
-      if (patientsRes.status === 'rejected') console.warn('Failed to fetch patients:', patientsRes.reason);
-      if (doctorsRes.status === 'rejected') console.warn('Failed to fetch doctors:', doctorsRes.reason);
-      
+
       // Combine the data manually
       // Note: medications array is already parsed from JSON by the backend
       const combinedPrescriptions: PrescriptionWithRelations[] = await Promise.all(
@@ -188,7 +170,7 @@ export default function PharmacyDashboard() {
               const patientRes = await api.get('/patients/' + prescription.patient_id);
               patient = patientRes.data.patient || patientRes.data;
             } catch (error) {
-              console.warn('Failed to fetch patient ' + prescription.patient_id + ':', error);
+
               patient = null;
             }
           }
@@ -200,7 +182,7 @@ export default function PharmacyDashboard() {
               const profiles = doctorRes.data.profiles || [];
               doctor = profiles.find((d: any) => d.id === prescription.doctor_id);
             } catch (error) {
-              console.warn('Failed to fetch doctor ' + prescription.doctor_id + ':', error);
+
               doctor = null;
             }
           }
@@ -251,34 +233,7 @@ export default function PharmacyDashboard() {
         
         return isNotDirectPharmacy && hasDoctorInvolvement;
       });
-      
-      console.log('🏥 Pharmacy Queues Debug:', {
-        totalVisits: allPharmacyVisits.length,
-        directPharmacy: directPharmacy.length,
-        doctorPrescriptions: doctorPrescriptions.length,
-        allVisitsDetails: allPharmacyVisits.map(v => ({
-          id: v.id,
-          patient_name: v.patient?.full_name,
-          visit_type: v.visit_type,
-          doctor_status: v.doctor_status,
-          nurse_status: v.nurse_status,
-          current_stage: v.current_stage,
-          pharmacy_status: v.pharmacy_status
-        })),
-        directSample: directPharmacy.slice(0, 2).map(v => ({
-          id: v.id,
-          patient_name: v.patient?.full_name,
-          visit_type: v.visit_type,
-          doctor_status: v.doctor_status
-        })),
-        prescriptionSample: doctorPrescriptions.slice(0, 2).map(v => ({
-          id: v.id,
-          patient_name: v.patient?.full_name,
-          visit_type: v.visit_type,
-          doctor_status: v.doctor_status
-        }))
-      });
-      
+
       setDirectPharmacyQueue(directPharmacy);
       setPrescriptionQueue(doctorPrescriptions);
       setPatientQueue(allPharmacyVisits); // Keep for backward compatibility
@@ -294,7 +249,7 @@ export default function PharmacyDashboard() {
       
       // Silently load data - no toast needed for background refresh
     } catch (error) {
-      console.error('Error loading pharmacy data:', error);
+
       const errorMsg = error instanceof Error ? error.message : 'Failed to load pharmacy data';
       setLoadError(errorMsg);
       
@@ -343,7 +298,7 @@ export default function PharmacyDashboard() {
       });
       setDispenseDialogOpen(true);
     } catch (error) {
-      console.error('Error fetching prescription details:', error);
+
       toast.error('Failed to load prescription details');
     }
   };
@@ -363,19 +318,9 @@ export default function PharmacyDashboard() {
         );
         
         setExistingPrescriptions(activePrescriptions);
-        console.log('📋 Existing prescriptions for patient:', {
-          patientId: visit.patient_id,
-          patientName: visit.patient?.full_name,
-          totalPrescriptions: patientPrescriptions.length,
-          activePrescriptions: activePrescriptions.length,
-          prescriptions: activePrescriptions.map(p => ({
-            id: p.id,
-            status: p.status,
-            itemsCount: p.prescription_items?.length || 0
-          }))
-        });
+
       } catch (error: any) {
-        console.error('Error fetching existing prescriptions:', error);
+
         setExistingPrescriptions([]);
         toast.error('Failed to load existing prescriptions');
       }
@@ -392,7 +337,7 @@ export default function PharmacyDashboard() {
       // Find the medication by name
       const medication = medications.find(med => med.name === medicationName);
       if (!medication) {
-        console.warn(`Medication not found: ${medicationName}`);
+
         return;
       }
 
@@ -414,8 +359,6 @@ export default function PharmacyDashboard() {
           : med
       ));
 
-      console.log(`✅ Stock restored: ${medicationName} +${quantity} (New stock: ${newStock})`);
-      
       await logActivity('pharmacy.stock.restored', {
         medication_id: medication.id,
         medication_name: medicationName,
@@ -425,7 +368,7 @@ export default function PharmacyDashboard() {
       });
 
     } catch (error: any) {
-      console.error('Error restoring stock:', error);
+
       toast.error(`Failed to restore stock for ${medicationName}`);
     }
   };
@@ -447,7 +390,7 @@ export default function PharmacyDashboard() {
       setDispenseDialogOpen(false);
       setSelectedPrescriptionForDispense(null);
     } catch (error) {
-      console.error('Dispense error:', error);
+
       toast.error('Failed to process dispensing');
     } finally {
       setLoadingStates(prev => ({ ...prev, [prescriptionId]: false }));
@@ -475,7 +418,7 @@ export default function PharmacyDashboard() {
       try {
         prescriptionRes = await api.get(`/prescriptions/${prescriptionId}`);
       } catch (error: any) {
-        console.error('Error fetching prescription:', error);
+
         await logActivity('pharmacy.dispense.error', { 
           error: 'Failed to fetch prescription',
           details: error.message 
@@ -522,7 +465,7 @@ export default function PharmacyDashboard() {
             prescribed_instructions: med.instructions
           });
         } catch (error: any) {
-          console.error('Error fetching medication:', error);
+
           toast.error(`Failed to fetch medication details for ${med.medication_name}`);
           return;
         }
@@ -531,10 +474,9 @@ export default function PharmacyDashboard() {
       // STEP 1: Add medications as patient-services (for comprehensive billing)
       // This allows billing to create ONE invoice with all services (lab tests + medications)
       try {
-        console.log('Adding medications to patient services for billing...');
-        console.log('Patient ID:', patientId);
-        console.log('Medication details:', medicationDetails);
-        
+
+
+
         // Validate patient ID format (should be UUID)
         if (!patientId || typeof patientId !== 'string') {
           throw new Error('Invalid patient ID: ' + patientId);
@@ -543,17 +485,17 @@ export default function PharmacyDashboard() {
         for (const medDetail of medicationDetails) {
           // Validate medication data
           if (!medDetail.name) {
-            console.warn('Skipping medication with no name:', medDetail);
+
             continue;
           }
           
           if (!medDetail.prescribed_quantity || isNaN(parseInt(medDetail.prescribed_quantity))) {
-            console.warn('Invalid quantity for medication:', medDetail.name, medDetail.prescribed_quantity);
+
             continue;
           }
           
           if (isNaN(parseFloat(medDetail.unit_price))) {
-            console.warn('Invalid unit price for medication:', medDetail.name, medDetail.unit_price);
+
             continue;
           }
           
@@ -569,17 +511,13 @@ export default function PharmacyDashboard() {
             status: 'Completed',
             notes: 'Medication: ' + medDetail.prescribed_frequency + (medDetail.prescribed_instructions ? '. ' + medDetail.prescribed_instructions : '')
           };
-          
-          console.log('Sending patient service data:', serviceData);
-          
+
           await api.post('/patient-services', serviceData);
-          
-          console.log('✅ Added ' + medDetail.name + ' (TSh ' + (Number(medDetail.unit_price || 0) * medDetail.prescribed_quantity) + ') to patient services');
+
         }
       } catch (error: any) {
-        console.error('❌ Error adding medications to patient services:', error);
-        console.error('Error response:', error.response?.data);
-        
+
+
         let errorMsg = 'Unknown error';
         if (error.response?.data?.errors) {
           // Laravel validation errors
@@ -627,7 +565,7 @@ export default function PharmacyDashboard() {
             quantity_in_stock: newStock // Send both for compatibility
           });
         } catch (error: any) {
-          console.error('Error updating stock:', error);
+
           toast.error(`Failed to update stock for ${medDetail.name}: ${error.message}`);
           return;
         }
@@ -645,7 +583,7 @@ export default function PharmacyDashboard() {
       try {
         await api.put(`/prescriptions/${prescriptionId}`, updateData);
       } catch (error: any) {
-        console.error('Error updating prescription:', error);
+
         await logActivity('pharmacy.dispense.error', { 
           error: 'Failed to update prescription',
           details: error.message,
@@ -660,25 +598,22 @@ export default function PharmacyDashboard() {
       try {
         prescriptionsRes = await api.get(`/prescriptions?patient_id=${patientId}`);
       } catch (error: any) {
-        console.error('Error fetching patient prescriptions:', error);
+
         prescriptionsRes = { data: { prescriptions: [] } };
       }
       
       const allPatientPrescriptions = prescriptionsRes.data.prescriptions;
       const pendingCount = allPatientPrescriptions?.filter((p: any) => p.status === 'Active' && p.id !== prescriptionId).length || 0;
       const isLastPrescription = pendingCount === 0;
-      
-      console.log(`Dispensing prescription. Remaining pending prescriptions: ${pendingCount}`);
-      
+
       // Only update patient visit to billing if this is the last prescription
       if (isLastPrescription) {
-        console.log('This is the last prescription - moving patient to billing');
-        
+
         let visitsRes;
         try {
           visitsRes = await api.get(`/visits?patient_id=${patientId}&overall_status=Active&limit=1`);
         } catch (error: any) {
-          console.error('Error fetching patient visits:', error);
+
           visitsRes = { data: { visits: [] } };
         }
         
@@ -686,8 +621,7 @@ export default function PharmacyDashboard() {
 
         if (visits && visits.length > 0) {
           const visit = visits[0];
-          console.log('Updating patient visit to billing stage:', visit.id);
-          
+
           // Create invoice for medications
           try {
             const totalAmount = medicationDetails.reduce((sum, med) => 
@@ -711,9 +645,8 @@ export default function PharmacyDashboard() {
               }))
             });
 
-            console.log('✅ Invoice created for medications:', invoiceRes.data.invoice);
           } catch (error: any) {
-            console.error('Error creating invoice:', error);
+
             // Don't fail the whole process if invoice creation fails
             toast.warning('Medications dispensed but invoice creation failed');
           }
@@ -727,23 +660,22 @@ export default function PharmacyDashboard() {
               overall_status: 'Active',
               updated_at: new Date().toISOString()
             });
-          
-          console.log('✅ Patient visit successfully moved to billing stage');
+
           await logActivity('pharmacy.visit.moved_to_billing', {
             visit_id: visit.id,
             patient_id: patientId,
             user_id: user.id
           });
         } catch (error: any) {
-          console.error('Error updating patient visit:', error);
+
           toast.error(`Failed to update patient visit: ${error.message}`);
           return;
         }
         } else {
-          console.warn('No active visit found for patient, but continuing with dispensing');
+
         }
       } else {
-        console.log(`Not moving to billing yet - ${pendingCount} prescriptions still pending`);
+
       }
 
       // STEP 5: Log successful dispense
@@ -766,7 +698,7 @@ export default function PharmacyDashboard() {
       // Update local state
       setPrescriptions(prev => prev.filter(p => p.id !== prescriptionId));
     } catch (error) {
-      console.error('Error dispensing prescription:', error);
+
       const errorMsg = error instanceof Error ? error.message : 'Failed to dispense prescription';
       
       await logActivity('pharmacy.dispense.error', {
@@ -802,9 +734,7 @@ export default function PharmacyDashboard() {
         stock_quantity: newQuantity,
         quantity_in_stock: newQuantity 
       });
-      
-      console.log('Stock update response:', response.data);
-      
+
       // Immediately update local state to reflect the change
       setMedications(prev => prev.map(med => 
         med.id === selectedMedication.id 
@@ -832,7 +762,7 @@ export default function PharmacyDashboard() {
       // Also refresh from server to ensure consistency
       setTimeout(() => loadPharmacyData(false), 500);
     } catch (error: any) {
-      console.error('Stock update error:', error);
+
       toast.error(error.response?.data?.error || 'Failed to update stock');
       return;
     }
@@ -915,7 +845,7 @@ export default function PharmacyDashboard() {
         }
       }
     } catch (error: any) {
-      console.error('Medication save error:', error);
+
       toast.error(error.response?.data?.error || `Failed to ${editingMedication ? 'update' : 'add'} medication`);
       return;
     }
@@ -985,9 +915,8 @@ export default function PharmacyDashboard() {
       });
 
     } catch (error: any) {
-      console.error('Delete medication error:', error);
-      console.error('Error response:', error.response);
-      
+
+
       // Handle specific error messages from backend
       if (error.response?.status === 422) {
         const errorMessage = error.response?.data?.message || 
@@ -1138,7 +1067,7 @@ export default function PharmacyDashboard() {
       setImportPreview([]);
       loadPharmacyData(false); // Background refresh
     } catch (error: any) {
-      console.error('Bulk import error:', error);
+
       toast.error(`Failed to import medications: ${error.message}`);
     } finally {
       setImportLoading(false);
@@ -1155,19 +1084,18 @@ export default function PharmacyDashboard() {
     [key: string]: any;
   }) => {
     try {
-      console.log('Starting invoice creation for prescription:', prescription.id);
 
       if (!prescription.medication_id) {
         throw new Error('Prescription does not have a valid medication ID');
       }
 
       // Get medication details to calculate pricing
-      console.log('Fetching medication details for ID:', prescription.medication_id);
+
       let medicationRes;
       try {
         medicationRes = await api.get(`/pharmacy/medications/${prescription.medication_id}`);
       } catch (error: any) {
-        console.error('Error fetching medication:', error);
+
         throw new Error(`Failed to fetch medication details: ${error.message}`);
       }
 
@@ -1177,14 +1105,10 @@ export default function PharmacyDashboard() {
         throw new Error('Medication not found');
       }
 
-      console.log('Medication found:', medicationData.name);
-
       // Calculate total amount (medication price * quantity + 10% tax)
       const subtotal = Number(medicationData.unit_price || 0) * prescription.quantity;
       const tax = subtotal * 0.1;
       const totalAmount = subtotal + tax;
-
-      console.log(`Calculated amounts - Subtotal: ${subtotal}, Tax: ${tax}, Total: ${totalAmount}`);
 
       // Create invoice with retry logic for duplicate invoice numbers
       let invoice = null;
@@ -1204,27 +1128,24 @@ export default function PharmacyDashboard() {
             status: 'Pending' // Using 'Pending' as it's a valid invoice status
           };
 
-          console.log(`Attempt ${attempts + 1}: Creating invoice with number:`, invoiceNumber);
-          
           let data;
           try {
             const invoiceRes = await api.post('/billing/invoices', invoiceData);
             data = invoiceRes.data.invoice;
           } catch (error: any) {
-            console.error(`Invoice creation attempt ${attempts + 1} failed:`, error);
-            
+
             // If it's a duplicate key error and we have retries left, try again
             if (error.response?.status === 409 || (error as any).code === '23505') {
               if (attempts < maxAttempts - 1) {
-              console.warn(`Duplicate invoice number ${invoiceNumber}, retrying...`);
+
                 attempts++;
-                console.warn(`Duplicate invoice number detected, retrying (${attempts}/${maxAttempts})...`);
+
                 // Add an increasing delay between retries
                 await new Promise(resolve => setTimeout(resolve, 200 * attempts));
                 continue;
               } else {
                 // If we're out of retries, try one last time with a timestamp-based number
-                console.warn('Max retries reached, trying with timestamp-based invoice number');
+
                 const timestamp = Date.now().toString().slice(-6);
                 const fallbackInvoiceNumber = `INV-${timestamp}`;
                 
@@ -1237,7 +1158,7 @@ export default function PharmacyDashboard() {
                   
                   data = fallbackRes.data.invoice;
                 } catch (fallbackError: any) {
-                  console.error('Fallback invoice creation failed:', fallbackError);
+
                   throw new Error(`Failed to create invoice after ${maxAttempts} attempts and fallback: ${fallbackError.message}`);
                 }
                 
@@ -1255,7 +1176,7 @@ export default function PharmacyDashboard() {
           
         } catch (error) {
           if (attempts >= maxAttempts - 1) {
-            console.error(`Failed to create invoice after ${maxAttempts} attempts:`, error);
+
             throw error;
           }
           attempts++;
@@ -1266,8 +1187,6 @@ export default function PharmacyDashboard() {
       if (!invoice) {
         throw new Error('Failed to create invoice after multiple attempts');
       }
-
-      console.log('Invoice created:', invoice);
 
       // Create invoice item
       const invoiceItemData = {
@@ -1280,18 +1199,16 @@ export default function PharmacyDashboard() {
         medication_id: prescription.medication_id
       };
 
-      console.log('Creating invoice item:', invoiceItemData);
       try {
         await api.post('/billing/invoice-items', invoiceItemData);
       } catch (error: any) {
-        console.error('Error creating invoice item:', error);
+
         throw new Error(`Failed to create invoice item: ${error.message}`);
       }
 
-      console.log('Invoice item created successfully');
       return invoice;
     } catch (error) {
-      console.error('Error in createInvoiceFromPrescription:', error);
+
       throw error;
     }
   };
@@ -2207,7 +2124,7 @@ export default function PharmacyDashboard() {
                                   });
 
                                 } catch (error: any) {
-                                  console.error('Error removing prescription item:', error);
+
                                   toast.error(`Failed to remove ${item.medication_name}`);
                                 }
                               }}
@@ -2235,7 +2152,7 @@ export default function PharmacyDashboard() {
                               }
                               toast.success('All doctor prescriptions dispensed successfully!');
                             } catch (error: any) {
-                              console.error('Error dispensing prescriptions:', error);
+
                               toast.error('Failed to dispense some prescriptions');
                             }
                           }}
@@ -2681,18 +2598,10 @@ export default function PharmacyDashboard() {
 
                       // Check if this is a direct pharmacy patient
                       const isDirectPharmacy = directPharmacyQueue.some(v => v.id === selectedPatientForPrescription?.id);
-                      
-                      console.log('🏥 Processing patient:', {
-                        patientName: selectedPatientForPrescription?.patient?.full_name,
-                        isDirectPharmacy,
-                        visitId: selectedPatientForPrescription?.id,
-                        medicationCount: validItems.length
-                      });
-                      
+
                       if (isDirectPharmacy) {
                         // For direct pharmacy patients: dispense immediately and create billing
-                        console.log('🟢 Processing direct pharmacy patient - dispensing immediately');
-                        
+
                         // Add medications as patient services for billing
                         for (const item of validItems) {
                           const medication = medications.find(m => m.id === item.medication_id);
@@ -2715,8 +2624,7 @@ export default function PharmacyDashboard() {
                             };
                             
                             await api.post('/patient-services', serviceData);
-                            console.log(`✅ Added ${medication.name} to patient services for billing`);
-                            
+
                             // Update stock
                             const currentStock = medication.stock_quantity || medication.quantity_in_stock || 0;
                             const newStock = Math.max(0, currentStock - quantity);
@@ -2732,8 +2640,7 @@ export default function PharmacyDashboard() {
                                 ? { ...med, stock_quantity: newStock, quantity_in_stock: newStock }
                                 : med
                             ));
-                            
-                            console.log(`📦 Stock updated: ${medication.name} -${quantity} (New stock: ${newStock})`);
+
                           }
                         }
                         
@@ -2768,9 +2675,8 @@ export default function PharmacyDashboard() {
                             })
                           });
 
-                          console.log('✅ Invoice created for direct pharmacy medications:', invoiceRes.data.invoice);
                         } catch (error: any) {
-                          console.error('Error creating invoice for direct pharmacy:', error);
+
                           toast.warning('Medications dispensed but invoice creation failed');
                         }
                         
@@ -2782,15 +2688,12 @@ export default function PharmacyDashboard() {
                           billing_status: 'Pending',
                           notes: `${selectedPatientForPrescription.notes || ''} - Direct pharmacy medications dispensed`.trim()
                         });
-                        
-                        console.log('✅ Visit moved to billing stage');
-                        
+
                         toast.success(`${validItems.length} medication(s) dispensed! Patient moved to billing.`);
                         
                       } else {
                         // For prescription queue patients: create prescription as before
-                        console.log('Processing prescription queue patient - creating prescription');
-                        
+
                         // Create prescription
                         const prescriptionData = {
                           patient_id: selectedPatientForPrescription.patient_id,
@@ -2824,9 +2727,9 @@ export default function PharmacyDashboard() {
                             pharmacy_status: 'In Progress',
                             notes: `${selectedPatientForPrescription.notes || ''} - Prescription created by pharmacy staff`.trim()
                           });
-                          console.log('Visit updated - patient removed from queue');
+
                         } catch (visitError) {
-                          console.warn('Failed to update visit status:', visitError);
+
                         }
                         
                         toast.success(`Prescription created with ${validItems.length} medication(s)! Patient removed from queue.`);
@@ -2854,7 +2757,7 @@ export default function PharmacyDashboard() {
                       // Refresh data
                       loadPharmacyData(false);
                     } catch (error: any) {
-                      console.error('Error creating prescription:', error);
+
                       toast.error(error.response?.data?.error || 'Failed to create prescription');
                     }
                   }}

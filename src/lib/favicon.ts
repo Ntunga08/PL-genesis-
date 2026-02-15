@@ -49,13 +49,13 @@ const createCircularFavicon = (imageUrl: string): Promise<string> => {
 export const updateFavicon = async () => {
   // Return cached result if already fetched
   if (faviconCache) {
-    console.log('Using cached favicon');
+
     return;
   }
   
   // Prevent multiple simultaneous fetches
   if (faviconFetching) {
-    console.log('Favicon fetch already in progress');
+
     return;
   }
   
@@ -91,7 +91,7 @@ export const updateFavicon = async () => {
       faviconCache = circularLogo;
     }
   } catch (error) {
-    console.log('Using default favicon');
+
   } finally {
     faviconFetching = false;
   }
@@ -100,13 +100,13 @@ export const updateFavicon = async () => {
 export const updatePageTitle = async () => {
   // Return cached result if already fetched
   if (titleCache) {
-    console.log('Using cached title');
+
     return;
   }
   
   // Prevent multiple simultaneous fetches
   if (titleFetching) {
-    console.log('Title fetch already in progress');
+
     return;
   }
   
@@ -122,7 +122,7 @@ export const updatePageTitle = async () => {
       titleCache = hospitalName;
     }
   } catch (error) {
-    console.log('Using default title');
+
   } finally {
     titleFetching = false;
   }

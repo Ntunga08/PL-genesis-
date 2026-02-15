@@ -194,7 +194,7 @@ export default function DoctorDashboard() {
       
       toast.success('Appointment started successfully');
     } catch (error) {
-      console.error('Error starting appointment:', error);
+
       toast.error('Failed to start appointment');
     }
   };
@@ -234,7 +234,7 @@ export default function DoctorDashboard() {
             completed_at: new Date().toISOString()
           });
         } catch (error: any) {
-          console.warn('Could not update appointment:', error.message);
+
         }
       }
 
@@ -293,7 +293,7 @@ export default function DoctorDashboard() {
       invalidateCache(`doctor_visits_${user.id}`);
       invalidateCache(`doctor_appointments_${user.id}`);
     } catch (error: any) {
-      console.error('Error completing appointment:', error);
+
       toast.error(error.response?.data?.error || 'Failed to complete appointment');
     }
   };
@@ -322,7 +322,7 @@ export default function DoctorDashboard() {
       
       toast.success('Appointment cancelled successfully');
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+
       toast.error('Failed to cancel appointment');
     }
   };
@@ -344,7 +344,7 @@ export default function DoctorDashboard() {
     // Allow starting appointments on the same day (no time restriction)
     const canStartAppointment = () => {
       if (!appointment.appointment_date) {
-        console.log('Missing appointment date');
+
         return false;
       }
       
@@ -369,12 +369,12 @@ export default function DoctorDashboard() {
         
         // Debug logging (only when button is disabled)
         if (!canStart) {
-          console.log(`${appointment.patient?.full_name}: Cannot start yet. Appointment is scheduled for ${appointmentDate} (today is ${today}).`);
+
         }
         
         return canStart;
       } catch (error) {
-        console.error('Error checking appointment time:', error, appointment);
+
         return false;
       }
     };
@@ -543,7 +543,7 @@ export default function DoctorDashboard() {
         </span>
       );
     } catch (error) {
-      console.error('Error formatting appointment time:', error, appointment);
+
       return null;
     }
   };
@@ -553,8 +553,7 @@ export default function DoctorDashboard() {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
-      console.log('Time updated:', now.toLocaleTimeString());
-      
+
       // Check if any appointment time has been reached
       appointments.forEach(appointment => {
         if (!appointment.appointment_date || !appointment.appointment_time) return;
@@ -576,7 +575,7 @@ export default function DoctorDashboard() {
             // We'll use the full updateAppointmentStatus function instead of the incomplete one
           }
         } catch (error) {
-          console.error('Error processing appointment time:', error, appointment);
+
         }
       });
     }, 10000); // Check every 10 seconds for better responsiveness
@@ -646,7 +645,7 @@ export default function DoctorDashboard() {
         ).length
       });
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+
       toast.error('Failed to load appointments. Please refresh the page.');
     } finally {
       setLoading(false);
@@ -669,9 +668,9 @@ export default function DoctorDashboard() {
         currency: service.currency || 'TZS'
       }));
       setAvailableLabTests(services);
-      console.log('Loaded lab services from medical_services:', services.length);
+
     } catch (error: any) {
-      console.error('Error fetching lab services:', error);
+
       // Don't show error toast - just log it
     }
   }, []);
@@ -683,7 +682,7 @@ export default function DoctorDashboard() {
       if (response.data.error) throw new Error(response.data.error);
       setAvailableMedications(response.data.medications || []);
     } catch (error: any) {
-      console.error('Error fetching medications:', error);
+
       // Don't show error toast - just log it
     }
   }, []);
@@ -724,7 +723,7 @@ export default function DoctorDashboard() {
       // Keep selectedVisit so doctor can continue adding lab tests/prescriptions
       // Don't clear it here - only clear when explicitly closing the patient view
     } catch (error) {
-      console.error('Error submitting consultation:', error);
+
       toast.error('Failed to submit consultation');
     } finally {
       setConsultationForm({ diagnosis: '', notes: '', treatment_plan: '' });
@@ -743,7 +742,7 @@ export default function DoctorDashboard() {
       toast.info('This feature is being updated. Please use the main lab test order button.');
       setShowLabTestDialog(false);
     } catch (error) {
-      console.error('Error ordering lab tests:', error);
+
       toast.error('Failed to order lab tests');
     } finally {
       setSelectedVisit(null);
@@ -776,7 +775,7 @@ export default function DoctorDashboard() {
       toast.success('Prescriptions created successfully');
       setShowPrescriptionDialog(false);
     } catch (error) {
-      console.error('Error creating prescriptions:', error);
+
       toast.error('Failed to create prescriptions');
     } finally {
       setSelectedVisit(null);
@@ -801,7 +800,7 @@ export default function DoctorDashboard() {
         // Real-time updates handled by Socket.io in main useEffect
         // No polling needed
       } catch (error) {
-        console.error('Error setting up polling:', error);
+
         if (isMounted) {
           toast.error('Failed to set up data polling');
         }
@@ -823,19 +822,17 @@ export default function DoctorDashboard() {
     try {
       // Input validation
       if (!appointmentId) {
-        console.error('No appointment ID provided');
+
         toast.error('Error: No appointment ID provided');
         return;
       }
 
       const validStatuses = ['Scheduled', 'Confirmed', 'Completed', 'Cancelled'];
       if (!validStatuses.includes(newStatus)) {
-        console.error('Invalid status provided:', newStatus);
+
         toast.error(`Error: Invalid status. Must be one of: ${validStatuses.join(', ')}`);
         return;
       }
-
-      console.log('Updating appointment status:', { appointmentId, newStatus });
 
       // Map display statuses to database enum values where needed
       const dbStatus = newStatus === 'Completed' ? 'completed' : newStatus === 'Cancelled' ? 'cancelled' : newStatus;
@@ -860,8 +857,6 @@ export default function DoctorDashboard() {
         throw new Error('No data returned from update - appointment may not exist');
       }
 
-      console.log('Update successful, response data:', data);
-
       // Update local state
       setAppointments(prev => {
         const updated = prev.map(appt =>
@@ -871,7 +866,7 @@ export default function DoctorDashboard() {
             patient: data.patient || appt.patient // Preserve patient data if not in response
           } : appt
         );
-        console.log('Updated appointments state:', updated);
+
         return updated;
       });
 
@@ -887,19 +882,19 @@ export default function DoctorDashboard() {
       };
 
       const message = statusMessages[newStatus as keyof typeof statusMessages] || 'Appointment updated';
-      console.log('Showing success message:', message);
+
       toast.success(message);
       
       // If completing an appointment, check if there are pending lab tests or prescriptions
       if (newStatus === 'Completed') {
-        console.log('Appointment completed, check for pending tests/prescriptions');
+
         // You could add logic here to check for pending tests/prescriptions
         // and prompt the doctor if they want to order any
       }
     } catch (error) {
-      console.error('Error in updateAppointmentStatus:', error);
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Full error details:', error);
+
       toast.error(`Failed to update appointment status: ${errorMessage}`);
     }
   };
@@ -1022,10 +1017,8 @@ export default function DoctorDashboard() {
     const uniqueTests = tests.filter((test, index, self) => 
       index === self.findIndex((t) => t.id === test.id)
     );
-    
-    console.log('Viewing lab results for tests:', uniqueTests);
-    console.log('First test structure:', uniqueTests[0]);
-    
+
+
     setSelectedLabTests(uniqueTests);
     setShowLabResults(true);
     
@@ -1055,7 +1048,7 @@ export default function DoctorDashboard() {
       const patients = response.data.patients || [];
       setSearchResults(patients);
     } catch (error) {
-      console.error('Error searching patients:', error);
+
       toast.error('Failed to search patients');
       setSearchResults([]);
     } finally {
@@ -1101,19 +1094,19 @@ export default function DoctorDashboard() {
         clearTimeout(timeoutId);
         
         if (response.status !== 200) {
-          console.warn('Background update returned non-200 status:', response.status);
+
         }
       } catch (apiError: any) {
         clearTimeout(timeoutId);
         if (apiError.name === 'AbortError') {
-          console.warn('Background update timed out, but consultation can continue');
+
         } else {
-          console.warn('Background update failed, but consultation can continue:', apiError.message);
+
         }
       }
       
     } catch (error) {
-      console.error('Error starting consultation:', error);
+
       // Still show the form even if everything fails
       setSelectedVisit(visit);
       setShowProvisionalDiagnosisForm(true);
@@ -1149,7 +1142,7 @@ export default function DoctorDashboard() {
       
       await dischargeQuickServicePatient(visit);
     } catch (error: any) {
-      console.error('Error completing quick service:', error);
+
       toast.error(error.response?.data?.error || 'Failed to complete service');
     }
   };
@@ -1173,7 +1166,7 @@ export default function DoctorDashboard() {
         fetchData(false);
       }, 1000);
     } catch (error: any) {
-      console.error('Error discharging patient:', error);
+
       toast.error(error.response?.data?.error || 'Failed to discharge patient');
     }
   };
@@ -1194,7 +1187,7 @@ export default function DoctorDashboard() {
       setSelectedVisitForForm(null);
       setServiceFormTemplate(null);
     } catch (error: any) {
-      console.error('Error saving form:', error);
+
       toast.error(error.response?.data?.error || 'Failed to save form');
     } finally {
       setFormSubmitting(false);
@@ -1246,7 +1239,7 @@ export default function DoctorDashboard() {
       const response = await api.get('/pharmacy/medications');
       
       if (response.status !== 200) {
-        console.error('Error fetching medications:', response.statusText);
+
         toast.error(`Failed to load medications: ${response.statusText}`);
         // Use predefined list as fallback
         const predefinedMeds = [
@@ -1264,7 +1257,7 @@ export default function DoctorDashboard() {
         setAvailableMedications(response.data.medications || []);
       }
     } catch (error: any) {
-      console.error('Error fetching medications:', error);
+
       toast.error(`Failed to load medications: ${error.message || 'Unknown error'}`);
     }
     
@@ -1325,7 +1318,7 @@ export default function DoctorDashboard() {
       setConsultationForm({ diagnosis: '', notes: '', treatment_plan: '' });
       
     } catch (error) {
-      console.error('Error saving consultation:', error);
+
       toast.error('Failed to save consultation notes');
     }
   };
@@ -1367,8 +1360,7 @@ export default function DoctorDashboard() {
       setPendingVisits(updatedVisits);
       
     } catch (error: any) {
-      console.error('Error saving provisional diagnosis:', error);
-      
+
       // Show detailed error message
       const errorMessage = error?.response?.data?.message 
         || error?.response?.data?.error
@@ -1377,7 +1369,7 @@ export default function DoctorDashboard() {
       
       // Log validation errors if present
       if (error?.response?.data?.errors) {
-        console.error('Validation errors:', error.response.data.errors);
+
         const validationErrors = Object.values(error.response.data.errors).flat().join(', ');
         toast.error(`Validation error: ${validationErrors}`);
       } else {
@@ -1399,14 +1391,6 @@ export default function DoctorDashboard() {
     }
 
     // Debug: Log the selectedVisit data structure
-    console.log('DEBUG: selectedVisit data structure:', {
-      selectedVisit_id: selectedVisit.id,
-      selectedVisit_appointment_id: selectedVisit.appointment_id,
-      selectedVisit_appointment: selectedVisit.appointment,
-      selectedVisit_keys: Object.keys(selectedVisit),
-      selectedVisit_patient_id: selectedVisit.patient_id,
-      selectedVisit_full_object: selectedVisit
-    });
 
     try {
       // Create lab test orders one by one to better handle errors
@@ -1424,8 +1408,6 @@ export default function DoctorDashboard() {
           ordered_date: new Date().toISOString()
         };
       });
-
-      console.log('Ordering lab tests:', labTests);
 
       // Insert lab tests one by one
       const createdTests = [];
@@ -1447,22 +1429,12 @@ export default function DoctorDashboard() {
           
           createdTests.push(response.data);
         } catch (testError: any) {
-          console.error('Error creating lab test:', testError);
-          console.error('Error response:', testError.response?.data);
-          console.error('Test data being sent:', {
-            patient_id: test.patient_id,
-            doctor_id: user.id,
-            test_name: test.test_name,
-            test_type: test.test_type || 'Laboratory',
-            test_date: new Date().toISOString().split('T')[0],
-            status: 'Pending',
-            notes: test.notes
-          });
+
+
+
           throw new Error(`Failed to create test "${test.test_name}": ${testError.response?.data?.message || testError.message}`);
         }
       }
-
-      console.log('Lab tests created successfully:', createdTests.length);
 
       // Add lab tests to patient billing (patient-services)
       // Each lab test should be billed as a service
@@ -1486,12 +1458,11 @@ export default function DoctorDashboard() {
                 status: 'Pending',
                 notes: `Lab test: ${testData.test_name}`
               });
-              
-              console.log(`✅ Added ${testData.test_name} (TSh ${service.base_price}) to patient bill`);
+
             }
           }
         } catch (billingError) {
-          console.error('Error adding lab test to billing:', billingError);
+
           // Continue - don't fail the whole operation if billing fails
         }
       }
@@ -1501,17 +1472,15 @@ export default function DoctorDashboard() {
       if (selectedVisit.id) {
         let visitId = selectedVisit.id;
         const appointmentId = selectedVisit.appointment_id || selectedVisit.appointment?.id;
-        
-        console.log('DEBUG: Initial visit ID:', visitId);
-        console.log('DEBUG: Associated appointment ID:', appointmentId);
-        
+
+
         // FIXED: Better detection of visit vs appointment object
         // Check if selectedVisit is actually a visit object or appointment object
         const isVisitObject = selectedVisit.current_stage || selectedVisit.overall_status || selectedVisit.reception_status;
         const isAppointmentObject = selectedVisit.appointment_date || selectedVisit.appointment_time || (!isVisitObject && selectedVisit.patient_id);
         
         if (isAppointmentObject) {
-          console.log('DEBUG: selectedVisit is an appointment object, finding corresponding visit...');
+
           try {
             // Try multiple approaches to find the visit
             let visits = [];
@@ -1531,18 +1500,16 @@ export default function DoctorDashboard() {
             
             if (visits.length > 0) {
               visitId = visits[0].id;
-              console.log('DEBUG: Found correct visit ID:', visitId);
+
             } else {
               throw new Error('No active visit found for this appointment/patient');
             }
           } catch (findError) {
-            console.error('Error finding visit:', findError);
+
             throw new Error('Could not find visit for this appointment');
           }
         }
-        
-        console.log('DEBUG: Final visit ID to update:', visitId);
-        
+
         // Update existing visit
         const visitResponse = await api.put(`/visits/${visitId}`, {
           current_stage: 'lab',
@@ -1552,14 +1519,13 @@ export default function DoctorDashboard() {
         });
 
         if (visitResponse.status !== 200) {
-          console.error('Visit update error:', visitResponse.statusText);
+
           throw new Error(`Failed to update patient visit: ${visitResponse.statusText}`);
         }
-        
-        console.log('Visit updated - patient sent to lab');
+
       } else if (selectedVisit.patient_id) {
         // Create a new visit for appointment-based flow
-        console.log('Creating visit for appointment-based lab order');
+
         try {
           const visitResponse = await api.post('/visits', {
             patient_id: selectedVisit.patient_id,
@@ -1574,10 +1540,10 @@ export default function DoctorDashboard() {
           });
           
           if (visitResponse.status === 201) {
-            console.log('Visit created successfully for lab workflow');
+
           }
         } catch (createError) {
-          console.error('Failed to create visit:', createError);
+
           // Continue anyway - lab tests are already created
         }
       }
@@ -1609,7 +1575,7 @@ export default function DoctorDashboard() {
       // Remove from pending visits
       setPendingVisits(prev => prev.filter(v => v.id !== selectedVisit.id));
     } catch (error: any) {
-      console.error('Error ordering lab tests:', error);
+
       const errorMessage = error.message || 'Failed to order lab tests';
       toast.error(errorMessage);
     }
@@ -1621,8 +1587,6 @@ export default function DoctorDashboard() {
       toast.error('Please select at least one medication');
       return;
     }
-
-    console.log('Selected visit for prescription:', selectedVisit);
 
     // Validate all selected medications have required fields
     for (const medId of selectedMedications) {
@@ -1669,27 +1633,14 @@ export default function DoctorDashboard() {
         items: prescriptionItems
       };
 
-      console.log('Creating prescription:', prescriptionData);
       const response = await api.post('/prescriptions', prescriptionData);
 
-      console.log('Prescription response:', response.data);
       if (response.status !== 201 && response.status !== 200) {
         throw new Error(response.data?.error || 'Failed to create prescriptions');
       }
 
       // Log prescription creation
       // Note: We're removing the logActivity call as it's not part of the API
-      console.log('Prescription creation logged', {
-        doctor_id: user?.id,
-        patient_id: selectedVisit.patient_id,
-        visit_id: selectedVisit.id,
-        prescription_count: selectedMedications.length,
-        medications: prescriptionItems.map(p => ({
-          medication: p.medication_name,
-          quantity: p.quantity,
-          dosage: p.dosage
-        }))
-      });
 
       // After writing prescription, complete consultation and send to pharmacy
       // Update or create visit
@@ -1704,15 +1655,14 @@ export default function DoctorDashboard() {
         });
 
         if (visitResponse.status !== 200) {
-          console.error('Error updating visit after prescription:', visitResponse.statusText);
+
           toast.error('Prescription saved but failed to send patient to pharmacy');
           return;
         }
-        
-        console.log('Visit updated - patient sent to pharmacy');
+
       } else if (selectedVisit.patient_id) {
         // Create a new visit for appointment-based flow
-        console.log('Creating visit for appointment-based pharmacy order');
+
         try {
           await api.post('/visits', {
             patient_id: selectedVisit.patient_id,
@@ -1726,20 +1676,14 @@ export default function DoctorDashboard() {
             pharmacy_status: 'Pending',
             doctor_id: user?.id
           });
-          console.log('Visit created successfully for pharmacy workflow');
+
         } catch (createError) {
-          console.error('Failed to create visit:', createError);
+
           // Continue anyway - prescriptions are already created
         }
       }
 
       // Note: We're removing the logActivity call as it's not part of the API
-      console.log('Consultation completion logged', {
-        doctor_id: user?.id,
-        patient_id: selectedVisit.patient_id,
-        visit_id: selectedVisit.id,
-        next_stage: 'pharmacy'
-      });
 
       toast.success(`${selectedMedications.length} prescription(s) written. Patient sent to pharmacy.`);
       setShowPrescriptionDialog(false);
@@ -1774,8 +1718,8 @@ export default function DoctorDashboard() {
       // Remove from pending visits
       setPendingVisits(prev => prev.filter(v => v.id !== selectedVisit.id));
     } catch (error: any) {
-      console.error('Error writing prescription:', error);
-      console.error('Error details:', error.response?.data);
+
+
       const errorMsg = error.response?.data?.error || error.message || 'Failed to write prescription';
       toast.error(errorMsg);
     }
@@ -1784,26 +1728,14 @@ export default function DoctorDashboard() {
   const handleRescheduleAppointment = async () => {
     // Input validation
     if (!rescheduleDate || !rescheduleTime || !selectedAppointment) {
-      console.error('Missing required fields for rescheduling:', { 
-        rescheduleDate, 
-        rescheduleTime, 
-        selectedAppointment 
-      });
+
       toast.error('Please fill in all required fields');
       return;
     }
-    
-    console.log('Starting reschedule with data:', {
-      appointmentId: selectedAppointment.id,
-      newDate: rescheduleDate,
-      newTime: rescheduleTime,
-      reason: rescheduleReason
-    });
 
     setIsRescheduling(true);
     try {
       const newDate = format(rescheduleDate, 'yyyy-MM-dd');
-      console.log('Formatted date for DB:', newDate);
 
       const updateData = { 
         appointment_date: newDate,
@@ -1813,8 +1745,6 @@ export default function DoctorDashboard() {
         reschedule_reason: rescheduleReason || 'No reason provided',
         updated_at: new Date().toISOString()
       };
-
-      console.log('Sending update to database:', updateData);
 
       const response = await api.put(`/appointments/${selectedAppointment.id}`, updateData);
 
@@ -1827,8 +1757,6 @@ export default function DoctorDashboard() {
         throw new Error('No data returned from update - appointment may not exist');
       }
 
-      console.log('Database update successful, response:', data);
-
       // Update local state with the complete appointment data from the server
       setAppointments(prev => {
         const updated = prev.map(appt =>
@@ -1840,12 +1768,12 @@ export default function DoctorDashboard() {
               } 
             : appt
         );
-        console.log('Updated appointments state:', updated);
+
         return updated;
       });
 
       const successMessage = `Appointment rescheduled to ${format(rescheduleDate, 'PPP')} at ${rescheduleTime}`;
-      console.log('Success:', successMessage);
+
       toast.success(successMessage);
       
       // Reset form
@@ -1856,9 +1784,9 @@ export default function DoctorDashboard() {
       setSelectedAppointment(null);
       
     } catch (error) {
-      console.error('Error in handleRescheduleAppointment:', error);
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Error details:', error);
+
       toast.error(`Failed to reschedule appointment: ${errorMessage}`);
     } finally {
       setIsRescheduling(false);
@@ -1867,12 +1795,10 @@ export default function DoctorDashboard() {
 
   const fetchData = async (isInitialLoad = false) => {
     if (!user) {
-      console.log('No user found, skipping data fetch');
+
       return;
     }
 
-    console.log('Fetching doctor dashboard data for user:', user.id);
-    
     // Only show full loading screen on initial load
     if (isInitialLoad) {
       setLoading(true);
@@ -1895,25 +1821,11 @@ export default function DoctorDashboard() {
       );
       
       if (visitsResponse.status !== 200) {
-        console.error('Error fetching visits:', visitsResponse.statusText);
+
         throw new Error(visitsResponse.statusText);
       }
       
       const visitsData = visitsResponse.data.visits || [];
-      
-      console.log('Doctor Dashboard - Patients waiting:', {
-        total_patients: visitsData?.length || 0,
-        patients: visitsData?.map(v => ({
-          id: v.id,
-          patient: v.patient?.full_name,
-          current_stage: v.current_stage,
-          doctor_status: v.doctor_status,
-          doctor_id: v.doctor_id,
-          nurse_completed: v.nurse_completed_at ? 'Yes' : 'No',
-          lab_status: v.lab_status,
-          created_at: v.created_at
-        })) || []
-      });
 
       // Fetch doctor's appointments (with caching and timeout)
       const appointmentsResponse = await fetchWithCache(
@@ -1925,12 +1837,11 @@ export default function DoctorDashboard() {
       );
       
       if (appointmentsResponse.status !== 200) {
-        console.error('Error fetching appointments:', appointmentsResponse.statusText);
+
         throw new Error(appointmentsResponse.statusText);
       }
 
       const appointmentsData = appointmentsResponse.data.appointments || [];
-      console.log('Fetched appointments:', appointmentsData?.length || 0);
 
       // Fetch patients (with caching and timeout)
       const patientsResponse = await fetchWithCache(
@@ -1951,7 +1862,7 @@ export default function DoctorDashboard() {
         });
         totalPatientsCount = patientCountResponse.data.total || 0;
       } catch (error) {
-        console.warn('Failed to fetch patient count, using 0:', error);
+
       }
 
       // Clear the timeout since main requests completed
@@ -1972,7 +1883,7 @@ export default function DoctorDashboard() {
             allLabTests = labTestsResponse.data.labTests || [];
           }
         } catch (error) {
-          console.warn('Failed to fetch lab tests:', error);
+
         }
 
         try {
@@ -1982,7 +1893,7 @@ export default function DoctorDashboard() {
             allPrescriptions = prescriptionsResponse.data.prescriptions || [];
           }
         } catch (error) {
-          console.warn('Failed to fetch prescriptions:', error);
+
         }
       }
 
@@ -2027,13 +1938,6 @@ export default function DoctorDashboard() {
         index === self.findIndex(v => v.id === visit.id)
       );
 
-      console.log('Filtered visits:', {
-        total: visitsWithLabTests.length,
-        active: activeVisits.length,
-        duplicates: activeVisits.length - uniqueVisits.length,
-        filtered_out: visitsWithLabTests.length - activeVisits.length
-      });
-
       setPendingVisits(uniqueVisits);
       setAppointments(appointmentsData || []);
       setPatients(patientsData || []);
@@ -2053,7 +1957,7 @@ export default function DoctorDashboard() {
           setCompletedVisits(completedResponse.data.visits || []);
         }
       } catch (error) {
-        console.warn('Failed to fetch completed visits (non-critical):', error);
+
         setCompletedVisits([]);
       }
       
@@ -2064,8 +1968,7 @@ export default function DoctorDashboard() {
         pendingConsultations: activeVisits.length
       });
     } catch (error: any) {
-      console.error('Error fetching doctor data:', error);
-      
+
       // Handle timeout errors specifically
       if (error.name === 'AbortError') {
         toast.error('Request timed out. Please check your connection and try again.');
@@ -3003,7 +2906,7 @@ export default function DoctorDashboard() {
                           }
                         } catch (e) {
                           // Silently handle parse errors - just show no vitals
-                          console.debug('Could not parse vitals from nurse_notes');
+
                         }
                         return <span className="text-xs text-muted-foreground">No vitals</span>;
                       })()}
@@ -4466,7 +4369,7 @@ export default function DoctorDashboard() {
                           });
                         } catch (error: any) {
                           // If appointment doesn't exist, that's okay - we'll use the visit
-                          console.warn('Could not update appointment notes:', error.message);
+
                         }
                       }
                       
@@ -4485,7 +4388,7 @@ export default function DoctorDashboard() {
                           });
                         } catch (error: any) {
                           // If appointment doesn't exist, that's okay - we'll use the visit
-                          console.warn('Could not update appointment notes:', error.message);
+
                         }
                       }
                       
@@ -4496,7 +4399,7 @@ export default function DoctorDashboard() {
                       confirmCompleteAppointment();
                     }
                   } catch (error: any) {
-                    console.error('Error processing action:', error);
+
                     toast.error('Failed to process action. Please try again.');
                     setShowCompleteDialog(true);
                     setIsCompletingWithAction(false);
