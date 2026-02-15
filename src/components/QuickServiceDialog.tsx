@@ -298,7 +298,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
         });
       }
 
-      // Create invoice for all services
+      // Create invoice for all services (with paid_amount = 0, payment will update it)
       const serviceNames = serviceCart.map(item => 
         `${item.service.service_name} (Qty: ${item.quantity})`
       ).join(', ');
@@ -307,9 +307,9 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
         patient_id: patientId,
         invoice_date: new Date().toISOString().split('T')[0],
         total_amount: totalAmount,
-        paid_amount: parseFloat(amountPaid),
-        balance: 0, // Fully paid
-        status: 'Paid',
+        paid_amount: 0,
+        balance: totalAmount,
+        status: 'Pending',
         notes: `Quick Service: ${serviceNames}`
       });
 

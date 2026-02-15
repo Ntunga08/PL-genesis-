@@ -714,14 +714,14 @@ export default function ReceptionistDashboard() {
       }
 
       // For non-mobile payments: Create payment record immediately
-      // Create invoice first
+      // Create invoice first (with paid_amount = 0, payment will update it)
       const invoiceRes = await api.post('/invoices', {
         patient_id: selectedAppointmentForPayment.patient_id,
         invoice_date: new Date().toISOString().split('T')[0],
         total_amount: amountPaid,
-        paid_amount: amountPaid,
-        balance: 0,
-        status: 'Paid',
+        paid_amount: 0,
+        balance: amountPaid,
+        status: 'Pending',
         notes: 'Appointment Fee'
       });
       
@@ -1129,14 +1129,14 @@ export default function ReceptionistDashboard() {
         }
       }
 
-      // For non-mobile payments: Create invoice first, then payment record and visit
+      // For non-mobile payments: Create invoice first (with paid_amount = 0), then payment record and visit
       const invoiceRes = await api.post('/invoices', {
         patient_id: selectedReturningPatient.id,
         invoice_date: new Date().toISOString().split('T')[0],
         total_amount: amountPaid,
-        paid_amount: amountPaid,
-        balance: 0,
-        status: 'Paid',
+        paid_amount: 0,
+        balance: amountPaid,
+        status: 'Pending',
         notes: 'Consultation Fee - Returning Patient'
       });
 
@@ -1587,14 +1587,14 @@ export default function ReceptionistDashboard() {
         }
       }
 
-      // For non-mobile payments: Create invoice first, then payment record and complete registration
+      // For non-mobile payments: Create invoice first (with paid_amount = 0), then payment record and complete registration
       const invoiceRes = await api.post('/invoices', {
         patient_id: patientId,
         invoice_date: new Date().toISOString().split('T')[0],
         total_amount: amountPaid,
-        paid_amount: amountPaid,
-        balance: 0,
-        status: 'Paid',
+        paid_amount: 0,
+        balance: amountPaid,
+        status: 'Pending',
         notes: 'Registration Fee - New Patient'
       });
       
