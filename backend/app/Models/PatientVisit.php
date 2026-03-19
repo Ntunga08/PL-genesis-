@@ -20,6 +20,8 @@ class PatientVisit extends Model
         'past_medical_history', 'family_social_history', 'obstetric_history',
         'developmental_milestones', 'investigation_plan', 'final_diagnosis',
         'treatment_rx', 'other_management', 'provisional_diagnosis_completed',
+        // ICD-10 codes
+        'icd10_code', 'icd10_description', 'final_icd10_code', 'final_icd10_description',
         // Workflow fields
         'current_stage', 'overall_status',
         'reception_status', 'reception_completed_at',

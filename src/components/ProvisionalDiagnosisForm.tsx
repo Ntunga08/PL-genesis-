@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight, Save, FileText } from 'lucide-react';
+import { ICD10Search } from '@/components/ICD10Search';
 
 interface ProvisionalDiagnosisFormProps {
   open: boolean;
@@ -27,8 +28,12 @@ interface ProvisionalDiagnosisData {
   obstetric_history: string;
   developmental_milestones: string;
   provisional_diagnosis: string;
+  icd10_code: string;
+  icd10_description: string;
   investigation_plan: string;
   final_diagnosis: string;
+  final_icd10_code: string;
+  final_icd10_description: string;
   treatment_rx: string;
   other_management: string;
   provisional_diagnosis_completed: boolean;
@@ -50,8 +55,12 @@ export function ProvisionalDiagnosisForm({
     obstetric_history: '',
     developmental_milestones: '',
     provisional_diagnosis: '',
+    icd10_code: '',
+    icd10_description: '',
     investigation_plan: '',
     final_diagnosis: '',
+    final_icd10_code: '',
+    final_icd10_description: '',
     treatment_rx: '',
     other_management: '',
     provisional_diagnosis_completed: false
@@ -81,8 +90,12 @@ export function ProvisionalDiagnosisForm({
         obstetric_history: visit.obstetric_history || '',
         developmental_milestones: visit.developmental_milestones || '',
         provisional_diagnosis: visit.provisional_diagnosis || visit.doctor_diagnosis || '',
+        icd10_code: visit.icd10_code || '',
+        icd10_description: visit.icd10_description || '',
         investigation_plan: visit.investigation_plan || '',
         final_diagnosis: visit.final_diagnosis || '',
+        final_icd10_code: visit.final_icd10_code || '',
+        final_icd10_description: visit.final_icd10_description || '',
         treatment_rx: visit.treatment_rx || '',
         other_management: visit.other_management || '',
         provisional_diagnosis_completed: visit.provisional_diagnosis_completed || false
@@ -167,8 +180,12 @@ export function ProvisionalDiagnosisForm({
         obstetric_history: visit.obstetric_history || '',
         developmental_milestones: visit.developmental_milestones || '',
         provisional_diagnosis: visit.provisional_diagnosis || visit.doctor_diagnosis || '',
+        icd10_code: visit.icd10_code || '',
+        icd10_description: visit.icd10_description || '',
         investigation_plan: visit.investigation_plan || '',
         final_diagnosis: visit.final_diagnosis || '',
+        final_icd10_code: visit.final_icd10_code || '',
+        final_icd10_description: visit.final_icd10_description || '',
         treatment_rx: visit.treatment_rx || '',
         other_management: visit.other_management || '',
         provisional_diagnosis_completed: visit.provisional_diagnosis_completed || false
@@ -386,6 +403,21 @@ export function ProvisionalDiagnosisForm({
                       />
                     </div>
 
+                    {/* ICD-10 for Provisional Diagnosis */}
+                    <ICD10Search
+                      label="ICD-10 Code (Provisional)"
+                      selectedCode={formData.icd10_code}
+                      selectedDescription={formData.icd10_description}
+                      onSelect={(code, desc) => {
+                        handleInputChange('icd10_code', code);
+                        handleInputChange('icd10_description', desc);
+                      }}
+                      onClear={() => {
+                        handleInputChange('icd10_code', '');
+                        handleInputChange('icd10_description', '');
+                      }}
+                    />
+
                     {/* Investigation Plan */}
                     <div>
                       <Label htmlFor="investigation_plan" className="text-sm font-medium">
@@ -415,6 +447,21 @@ export function ProvisionalDiagnosisForm({
                         className="mt-1"
                       />
                     </div>
+
+                    {/* ICD-10 for Final Diagnosis */}
+                    <ICD10Search
+                      label="ICD-10 Code (Final)"
+                      selectedCode={formData.final_icd10_code}
+                      selectedDescription={formData.final_icd10_description}
+                      onSelect={(code, desc) => {
+                        handleInputChange('final_icd10_code', code);
+                        handleInputChange('final_icd10_description', desc);
+                      }}
+                      onClear={() => {
+                        handleInputChange('final_icd10_code', '');
+                        handleInputChange('final_icd10_description', '');
+                      }}
+                    />
 
                   </CardContent>
                 </CollapsibleContent>

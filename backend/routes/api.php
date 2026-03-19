@@ -10,6 +10,7 @@ use App\Http\Controllers\VisitController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ICD10Controller;
 
 // Public routes
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -151,6 +152,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/appointments/{id}', [AppointmentController::class, 'update']);
     Route::delete('/appointments/{id}', [AppointmentController::class, 'destroy']);
     
+    // ICD-10 Code Search
+    Route::get('/icd10/search', [ICD10Controller::class, 'search']);
+
     // Departments
     Route::get('/departments', [DepartmentController::class, 'index']);
     

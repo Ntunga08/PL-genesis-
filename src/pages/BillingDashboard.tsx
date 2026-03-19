@@ -4976,6 +4976,10 @@ export default function BillingDashboard() {
 
                 const claimNumber = `CLM-${Date.now().toString().slice(-8)}`;
                 
+                // Get ICD-10 from the invoice's linked visit if available
+                const visitIcd10Code = invoice.visit?.icd10_code || invoice.visit?.final_icd10_code || '';
+                const visitIcd10Desc = invoice.visit?.icd10_description || invoice.visit?.final_icd10_description || '';
+
                 // Prepare claim data
                 const claimData = {
                   invoice_id: invoiceId,
@@ -4985,7 +4989,9 @@ export default function BillingDashboard() {
                   claim_amount: claimAmount,
                   notes: notes,
                   status: 'Pending',
-                  submission_date: new Date().toISOString()
+                  submission_date: new Date().toISOString(),
+                  icd10_code: visitIcd10Code,
+                  icd10_description: visitIcd10Desc,
                 };
 
                 // If insurance company has API key, submit via API
@@ -5000,6 +5006,8 @@ export default function BillingDashboard() {
                       FacilityCode: insuranceCompany.facility_code || 'HF001',
                       DateOfService: invoice.invoice_date,
                       TotalAmount: claimAmount,
+                      DiagnosisCode: visitIcd10Code,
+                      DiagnosisDescription: visitIcd10Desc,
                       Services: invoice.invoice_items?.map((item: any) => ({
                         ServiceCode: item.item_type || 'CONS',
                         ServiceName: item.description,
