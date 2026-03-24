@@ -38,7 +38,9 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
 
     setDecrypting(true);
     try {
-      const encryptionKey = await getEncryptionKey(signer);
+      // Get patient address - use patientAddress for doctor, account for patient
+      const addressForKey = isPatient ? account : patientAddress;
+      const encryptionKey = await getEncryptionKey(signer, addressForKey);
       
       const decryptedRecords = await Promise.all(
         records.map(async (record) => {
