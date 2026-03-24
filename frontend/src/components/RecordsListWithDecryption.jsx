@@ -44,12 +44,17 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
         records.map(async (record) => {
           if (record.recordType === 'form') {
             try {
+              console.log('Fetching IPFS hash:', record.ipfsHash);
               const encryptedData = await fetchFromIPFS(record.ipfsHash);
+              console.log('Encrypted data length:', encryptedData.length);
+              
               const decrypted = decryptData(encryptedData, encryptionKey);
+              console.log('Decrypted data:', decrypted);
+              
               return { ...record, decryptedData: decrypted };
             } catch (err) {
-              console.error('Decryption failed for record:', err);
-              return record;
+              console.error('Decryption failed for record:', record.ipfsHash, err);
+              return { ...record, decryptionError: err.message };
             }
           }
           return record;
@@ -59,6 +64,7 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
       setRecords(decryptedRecords);
     } catch (err) {
       console.error('Error decrypting records:', err);
+      alert('Decryption error: ' + err.message);
     } finally {
       setDecrypting(false);
     }
