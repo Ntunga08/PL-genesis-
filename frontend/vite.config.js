@@ -4,6 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/PL-genesis-/',  // Your GitHub repo name
+  base: '/',  // Root path for Netlify
   plugins: [react(), tailwindcss()],
 })
