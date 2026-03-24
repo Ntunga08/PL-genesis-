@@ -38,8 +38,8 @@ export default function AddRecordFormWithEncryption({ contract, patientAddress, 
     setSuccess('');
 
     try {
-      // Get encryption key from wallet signature
-      const encryptionKey = await getEncryptionKey(signer);
+      // Get encryption key using PATIENT's address (so patient can decrypt later)
+      const encryptionKey = await getEncryptionKey(signer, patientAddress);
       
       // Combine standard fields with custom fields
       const allData = {
