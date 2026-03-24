@@ -2,8 +2,11 @@ import nacl from 'tweetnacl';
 import { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
 
 // Generate encryption key from wallet signature
-export async function getEncryptionKey(signer) {
-  const message = "HealthLink Encryption Key - Do not sign this on untrusted sites!";
+export async function getEncryptionKey(signer, forAddress = null) {
+  // If forAddress is provided, use that address in the message
+  // This ensures patient and doctor use the same key (patient's key)
+  const address = forAddress || (await signer.getAddress());
+  const message = `HealthLink Encryption Key for ${address}`;
   const signature = await signer.signMessage(message);
   
   // Use first 32 bytes of signature as key
