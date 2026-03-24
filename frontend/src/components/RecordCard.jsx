@@ -42,13 +42,13 @@ export default function RecordCard({ record, onDecrypt }) {
         <div className="flex items-center gap-2 text-xs">
           <span className="text-slate-500">IPFS:</span>
           <span className="font-mono text-slate-700">
-            {record.ipfsHash.slice(0, 12)}...
+            {record.ipfsHash?.slice(0, 12) || 'N/A'}...
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="text-slate-500">Added by:</span>
           <span className="font-mono text-slate-700">
-            {record.addedBy.slice(0, 6)}...{record.addedBy.slice(-4)}
+            {record.addedBy?.slice(0, 6) || 'N/A'}...{record.addedBy?.slice(-4) || ''}
           </span>
         </div>
       </div>
