@@ -1,8 +1,5 @@
-// Contract deployed locally
-export const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+// Contract deployed on sepolia
+export const CONTRACT_ADDRESS = "0x5956368Cb494B9A4168c6a104f433A369A13A19D";
 
-// Hardhat local network
-export const CHAIN_ID = 31337; // Hardhat local
-
-// For Sepolia testnet, use:
-// export const CHAIN_ID = 11155111;
+// Chain ID for sepolia
+export const CHAIN_ID = 11155111;
