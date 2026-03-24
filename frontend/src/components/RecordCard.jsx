@@ -80,6 +80,17 @@ export default function RecordCard({ record, onDecrypt }) {
                 <span className="text-slate-600 ml-2">{record.decryptedData.notes}</span>
               </div>
             )}
+            {record.decryptedData.customFields && Object.keys(record.decryptedData.customFields).length > 0 && (
+              <div className="pt-2 mt-2 border-t border-slate-200">
+                <p className="font-semibold text-slate-700 mb-1">Custom Fields:</p>
+                {Object.entries(record.decryptedData.customFields).map(([key, value]) => (
+                  <div key={key} className="ml-2">
+                    <span className="font-medium text-slate-600">{key}:</span>
+                    <span className="text-slate-600 ml-2">{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
