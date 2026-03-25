@@ -8,6 +8,24 @@ A blockchain-based medical records system where patients own and control their h
 
 ---
 
+## 🌟 Version Info
+
+**Current Version:** V1 (Stable)  
+**Branch:** `main`
+
+**V2 Coming Soon!** 🚀  
+We're building V2 with modern SDKs for better wallet support and UX.  
+**Branch:** `v2-sdk-integration` | [See V2 Plan](V2_PLAN.md)
+
+**What's New in V2:**
+- 100+ wallet support (not just MetaMask)
+- Mobile wallet support via WalletConnect
+- Professional UI with RainbowKit
+- Cleaner code with Wagmi hooks
+- Better error handling
+
+---
+
 ## The Problem
 
 Healthcare data today is:
