@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getEncryptionKey, decryptData } from '../utils/encryption';
 import { fetchFromIPFS } from '../utils/ipfs';
 import RecordCard from './RecordCard';
 import LoadingSpinner from './LoadingSpinner';
@@ -68,25 +67,21 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
 
     setDecryptingAll(true);
     try {
-      const addressForKey = isPatient ? account : patientAddress;
-      console.log('Getting encryption key for:', addressForKey);
+      console.log('Loading records from IPFS...');
       
-      // Get encryption key ONCE (single wallet signature for all records)
-      const encryptionKey = await getEncryptionKey(signer, addressForKey);
-      console.log('Encryption key generated, decrypting all records...');
-      
-      // Decrypt all records in parallel using the same key
-      const decryptedRecords = await Promise.all(
+      // Load all records from IPFS (no encryption for now)
+      const loadedRecords = await Promise.all(
         records.map(async (record, index) => {
           if (record.recordType === 'form' && !record.decryptedData) {
             try {
               console.log(`Fetching record ${index} from IPFS:`, record.ipfsHash);
-              const encryptedData = await fetchFromIPFS(record.ipfsHash);
-              const decrypted = decryptData(encryptedData, encryptionKey);
-              console.log(`Record ${index} decrypted successfully`);
-              return { ...record, decryptedData: decrypted };
+              const data = await fetchFromIPFS(record.ipfsHash);
+              // Try to parse as JSON (unencrypted)
+              const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+              console.log(`Record ${index} loaded successfully`);
+              return { ...record, decryptedData: parsed };
             } catch (err) {
-              console.error(`Decryption failed for record ${index}:`, err);
+              console.error(`Failed to load record ${index}:`, err);
               return { ...record, decryptionError: err.message };
             }
           }
@@ -95,10 +90,10 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
       );
 
       console.log('All records processed');
-      setRecords(decryptedRecords);
+      setRecords(loadedRecords);
     } catch (err) {
-      console.error('Error decrypting records:', err);
-      alert('Decryption error: ' + err.message);
+      console.error('Error loading records:', err);
+      alert('Error loading records: ' + err.message);
     } finally {
       setDecryptingAll(false);
     }
@@ -194,10 +189,10 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Decrypting All...
+                Loading...
               </span>
             ) : (
-              '🔓 Decrypt All'
+              '📄 Load All Records'
             )}
           </button>
         )}

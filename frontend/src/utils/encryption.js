@@ -2,19 +2,21 @@ import nacl from 'tweetnacl';
 import { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
 
 // Generate encryption key from wallet signature
-export async function getEncryptionKey(signer, forAddress = null) {
+// CRITICAL: The signer must ALWAYS be the wallet that will decrypt (usually patient)
+// For doctors encrypting patient records, they need the patient to generate the key first
+export async function getEncryptionKey(signer) {
   try {
     // Handle both ethers signer and Wagmi walletClient
     let address, signature;
     
     if (signer.account) {
       // Wagmi walletClient
-      address = forAddress || signer.account.address;
+      address = signer.account.address;
       const message = `HealthLink Encryption Key for ${address}`;
       signature = await signer.signMessage({ message });
     } else {
       // Ethers signer
-      address = forAddress || (await signer.getAddress());
+      address = await signer.getAddress();
       const message = `HealthLink Encryption Key for ${address}`;
       signature = await signer.signMessage(message);
     }
