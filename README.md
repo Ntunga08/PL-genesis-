@@ -411,16 +411,6 @@ Same as patients:
 
 ---
 
-## 📚 Documentation
-
-- **[QUICK_START.md](QUICK_START.md)** - Get started in 5 minutes
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Comprehensive user manual
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - For developers
-- **[NETLIFY_DEPLOY.md](NETLIFY_DEPLOY.md)** - Frontend deployment guide
-
----
-
 ## Quick Start
 
 ### 1. Install Dependencies
@@ -530,7 +520,31 @@ This project is under active development. Contributions are welcome!
 
 ### Development Setup
 
-See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for local development setup.
+```bash
+# Clone repository
+git clone https://github.com/Ntunga08/PL-genesis-.git
+cd PL-genesis-
+
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your keys
+
+# Start local blockchain
+npx hardhat node
+
+# Deploy contract (in new terminal)
+npx hardhat run scripts/deploy.js --network localhost
+
+# Start frontend (in new terminal)
+cd frontend
+npm run dev
+```
+
+Open http://localhost:5173/
 
 ---
 
@@ -587,7 +601,7 @@ This software is provided "as is" without warranty. Not intended for production 
 ## 📞 Support & Contact
 
 ### Getting Help
-1. **Documentation:** Check [USER_GUIDE.md](USER_GUIDE.md) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+1. **Documentation:** Check this README for complete information
 2. **Issues:** Open an issue on [GitHub](https://github.com/Ntunga08/PL-genesis-/issues)
 3. **Discussions:** Join GitHub Discussions (coming soon)
 
