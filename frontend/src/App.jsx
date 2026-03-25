@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useWallet } from './hooks/useWallet';
+import { useAccount, useWalletClient } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useContract } from './hooks/useContract';
 import Home from './pages/Home';
 import PatientDashboard from './pages/PatientDashboard';
@@ -7,8 +8,9 @@ import AttendantDashboard from './pages/AttendantDashboard';
 import NetworkBanner from './components/NetworkBanner';
 
 function App() {
-  const { account, signer, isConnecting, error, connectWallet, disconnectWallet } = useWallet();
-  const contract = useContract(signer);
+  const { address: account } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const contract = useContract();
   const [currentPage, setCurrentPage] = useState('home');
 
   return (
@@ -21,25 +23,14 @@ function App() {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <span className="text-lg">🏥</span>
-            <h1 className="text-lg font-bold text-slate-800">HealthLink</h1>
+            <h1 className="text-lg font-bold text-slate-800">HealthLink V2</h1>
+            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">SDK</span>
           </button>
           
-          {account && (
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs text-slate-500">Connected</p>
-                <p className="font-mono text-xs text-slate-700">
-                  {account.slice(0, 6)}...{account.slice(-4)}
-                </p>
-              </div>
-              <button 
-                onClick={disconnectWallet}
-                className="px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
-              >
-                Disconnect
-              </button>
-            </div>
-          )}
+          {/* RainbowKit Connect Button in Header */}
+          <div className="flex items-center gap-3">
+            <ConnectButton />
+          </div>
         </div>
       </header>
 
@@ -48,56 +39,13 @@ function App() {
         {account && <NetworkBanner />}
 
         {!account ? (
-          /* Connect Wallet */
+          /* Home Page with Connect Button */
           <div className="max-w-sm mx-auto">
-            <div className="bg-white rounded-xl shadow-lg p-8 text-center border border-slate-200">
-              <span className="text-3xl mb-4 block">🔐</span>
-              
-              <h2 className="text-xl font-bold text-slate-800 mb-2">
-                Connect Wallet
-              </h2>
-              <p className="text-sm text-slate-600 mb-6">
-                Access your medical records securely
-              </p>
-              
-              <button 
-                onClick={connectWallet} 
-                disabled={isConnecting}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 text-sm font-semibold rounded-lg hover:shadow-lg hover:shadow-blue-500/30 transition-all disabled:opacity-60"
-              >
-                {isConnecting ? 'Connecting...' : 'Connect MetaMask'}
-              </button>
-              
-              {error && (
-                <div className="mt-4 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
-                  {error}
-                </div>
-              )}
-            </div>
+            <Home onSelectRole={setCurrentPage} />
           </div>
         ) : (
           /* Dashboard Pages */
           <>
-            {/* Status Bar */}
-            <div className="bg-white rounded-lg shadow p-4 border border-slate-200 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">✅</span>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">Connected</p>
-                    <p className="font-mono text-xs text-slate-600">
-                      {account.slice(0, 6)}...{account.slice(-4)}
-                    </p>
-                  </div>
-                </div>
-                {contract && (
-                  <p className="font-mono text-xs text-blue-600">
-                    {contract.target.slice(0, 6)}...{contract.target.slice(-4)}
-                  </p>
-                )}
-              </div>
-            </div>
-
             {/* Page Router */}
             {currentPage === 'home' && (
               <Home onSelectRole={setCurrentPage} />
@@ -107,7 +55,7 @@ function App() {
               <PatientDashboard 
                 contract={contract}
                 account={account}
-                signer={signer}
+                signer={walletClient}
                 onBack={() => setCurrentPage('home')}
               />
             )}
@@ -116,7 +64,7 @@ function App() {
               <AttendantDashboard 
                 contract={contract}
                 account={account}
-                signer={signer}
+                signer={walletClient}
                 onBack={() => setCurrentPage('home')}
               />
             )}
