@@ -3,18 +3,32 @@ import { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-ut
 
 // Generate encryption key from wallet signature
 export async function getEncryptionKey(signer, forAddress = null) {
-  // If forAddress is provided, use that address in the message
-  // This ensures patient and doctor use the same key (patient's key)
-  const address = forAddress || (await signer.getAddress());
-  const message = `HealthLink Encryption Key for ${address}`;
-  const signature = await signer.signMessage(message);
-  
-  // Use first 32 bytes of signature as key
-  const keyBytes = new Uint8Array(
-    signature.slice(2).match(/.{1,2}/g).slice(0, 32).map(byte => parseInt(byte, 16))
-  );
-  
-  return keyBytes;
+  try {
+    // Handle both ethers signer and Wagmi walletClient
+    let address, signature;
+    
+    if (signer.account) {
+      // Wagmi walletClient
+      address = forAddress || signer.account.address;
+      const message = `HealthLink Encryption Key for ${address}`;
+      signature = await signer.signMessage({ message });
+    } else {
+      // Ethers signer
+      address = forAddress || (await signer.getAddress());
+      const message = `HealthLink Encryption Key for ${address}`;
+      signature = await signer.signMessage(message);
+    }
+    
+    // Use first 32 bytes of signature as key
+    const keyBytes = new Uint8Array(
+      signature.slice(2).match(/.{1,2}/g).slice(0, 32).map(byte => parseInt(byte, 16))
+    );
+    
+    return keyBytes;
+  } catch (err) {
+    console.error('Error generating encryption key:', err);
+    throw new Error('Failed to generate encryption key. Please try again.');
+  }
 }
 
 // Encrypt data
