@@ -1,5 +1,11 @@
 # HealthLink User Guide
 
+## 📚 Documentation
+
+- **Quick Start:** [QUICK_START.md](QUICK_START.md) - Get started in 5 minutes
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
+- **Deployment:** [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - For developers
+
 ## What is HealthLink?
 
 HealthLink is a decentralized medical records system where:
