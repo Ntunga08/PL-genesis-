@@ -37,17 +37,23 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
       console.log('Raw records from contract:', recordsData);
       
       // Convert BigInt to regular numbers and format data
-      const formattedRecords = recordsData.map((record, index) => {
-        console.log(`Record ${index}:`, record);
-        const formatted = {
-          ipfsHash: record.ipfsHash || record[0],
-          recordType: record.recordType || record[1],
-          timestamp: record.timestamp || record[2],
-          addedBy: record.addedBy || record[3]
-        };
-        console.log(`Formatted record ${index}:`, formatted);
-        return formatted;
-      });
+      // FILTER OUT CHAT MESSAGES - they should only appear in ChatBox
+      const formattedRecords = recordsData
+        .filter(record => {
+          const recordType = record.recordType || record[1];
+          return recordType !== 'chat'; // Exclude chat messages
+        })
+        .map((record, index) => {
+          console.log(`Record ${index}:`, record);
+          const formatted = {
+            ipfsHash: record.ipfsHash || record[0],
+            recordType: record.recordType || record[1],
+            timestamp: record.timestamp || record[2],
+            addedBy: record.addedBy || record[3]
+          };
+          console.log(`Formatted record ${index}:`, formatted);
+          return formatted;
+        });
       
       console.log('All formatted records:', formattedRecords);
       setRecords(formattedRecords);

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { BrowserProvider } from 'ethers';
 import { useContract } from './hooks/useContract';
 import Home from './pages/Home';
 import PatientDashboard from './pages/PatientDashboard';
@@ -12,6 +13,26 @@ function App() {
   const { data: walletClient } = useWalletClient();
   const contract = useContract();
   const [currentPage, setCurrentPage] = useState('home');
+  const [signer, setSigner] = useState(null);
+
+  // Get signer from walletClient
+  useEffect(() => {
+    async function getSigner() {
+      if (walletClient) {
+        try {
+          const provider = new BrowserProvider(walletClient);
+          const ethersSigner = await provider.getSigner();
+          setSigner(ethersSigner);
+        } catch (err) {
+          console.error('Error getting signer:', err);
+          setSigner(null);
+        }
+      } else {
+        setSigner(null);
+      }
+    }
+    getSigner();
+  }, [walletClient]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
@@ -39,12 +60,12 @@ function App() {
         {account && <NetworkBanner />}
 
         {!account ? (
-          /* Home Page with Connect Button */
+          /* Home Page with Connect Button */}
           <div className="max-w-sm mx-auto">
             <Home onSelectRole={setCurrentPage} />
           </div>
         ) : (
-          /* Dashboard Pages */
+          /* Dashboard Pages */}
           <>
             {/* Page Router */}
             {currentPage === 'home' && (
@@ -55,7 +76,7 @@ function App() {
               <PatientDashboard 
                 contract={contract}
                 account={account}
-                signer={walletClient}
+                signer={signer}
                 onBack={() => setCurrentPage('home')}
               />
             )}
@@ -64,7 +85,7 @@ function App() {
               <AttendantDashboard 
                 contract={contract}
                 account={account}
-                signer={walletClient}
+                signer={signer}
                 onBack={() => setCurrentPage('home')}
               />
             )}
