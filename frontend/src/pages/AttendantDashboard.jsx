@@ -21,9 +21,11 @@ export default function AttendantDashboard({ contract, account, signer, onBack }
         
         if (access) {
           const records = await contract.getRecords(address);
+          // Filter out chat messages from medical records count
+          const medicalRecords = records.filter(r => r.recordType !== 'chat');
           setPatientStats({
-            totalRecords: records.length,
-            lastVisit: records.length > 0 ? records[records.length - 1].timestamp : null
+            totalRecords: medicalRecords.length,
+            lastVisit: medicalRecords.length > 0 ? medicalRecords[medicalRecords.length - 1].timestamp : null
           });
         }
       } catch (err) {

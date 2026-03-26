@@ -18,8 +18,10 @@ export default function PatientDashboard({ contract, account, signer, onBack }) 
     if (!contract) return;
     try {
       const records = await contract.getMyRecords();
+      // Filter out chat messages from medical records count
+      const medicalRecords = records.filter(r => r.recordType !== 'chat');
       setStats({
-        totalRecords: records.length
+        totalRecords: medicalRecords.length
       });
     } catch (err) {
       console.error('Error loading stats:', err);
