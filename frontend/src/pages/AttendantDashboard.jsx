@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PatientAddressInput from '../components/PatientAddressInput';
 import AddRecordFormWithEncryption from '../components/AddRecordFormWithEncryption';
 import RecordsListWithDecryption from '../components/RecordsListWithDecryption';
+import ChatBox from '../components/ChatBox';
 
 export default function AttendantDashboard({ contract, account, signer, onBack }) {
   const [patientAddress, setPatientAddress] = useState('');
@@ -112,6 +113,16 @@ export default function AttendantDashboard({ contract, account, signer, onBack }
                     📋 Patient Chart
                   </button>
                   <button
+                    onClick={() => setActiveTab('chat')}
+                    className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
+                      activeTab === 'chat'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    💬 Chat with Patient
+                  </button>
+                  <button
                     onClick={() => setActiveTab('addRecord')}
                     className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
                       activeTab === 'addRecord'
@@ -135,6 +146,20 @@ export default function AttendantDashboard({ contract, account, signer, onBack }
                       isPatient={false}
                       signer={signer}
                       refreshKey={refreshKey}
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'chat' && (
+                  <div>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Communicate securely with your patient
+                    </p>
+                    <ChatBox
+                      contract={contract}
+                      patientAddress={patientAddress}
+                      currentUser={account}
+                      isPatient={false}
                     />
                   </div>
                 )}

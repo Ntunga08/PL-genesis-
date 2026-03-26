@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Contract, BrowserProvider } from 'ethers';
 import { useWalletClient, usePublicClient } from 'wagmi';
 import { CONTRACT_ADDRESS } from '../constants';
@@ -11,25 +11,28 @@ export function useContract() {
 
   useEffect(() => {
     async function setupContract() {
-      if (!walletClient && !publicClient) {
-        setContract(null);
-        return;
-      }
-
       try {
-        // Use walletClient for write operations, publicClient for read
-        const client = walletClient || publicClient;
-        const provider = new BrowserProvider(client.transport);
-        
-        let contractInstance;
         if (walletClient) {
-          const signer = await provider.getSigner(walletClient.account.address);
-          contractInstance = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, signer);
+          console.log('Setting up contract with wallet client');
+          // Create provider from walletClient
+          const provider = new BrowserProvider(walletClient);
+          // Get signer
+          const signer = await provider.getSigner();
+          console.log('Signer address:', await signer.getAddress());
+          // Create contract with signer
+          const contractInstance = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, signer);
+          console.log('Contract created with signer');
+          setContract(contractInstance);
+        } else if (publicClient) {
+          console.log('Setting up read-only contract');
+          // Read-only contract
+          const provider = new BrowserProvider(publicClient);
+          const contractInstance = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
+          setContract(contractInstance);
         } else {
-          contractInstance = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
+          console.log('No wallet or public client available');
+          setContract(null);
         }
-        
-        setContract(contractInstance);
       } catch (err) {
         console.error('Error setting up contract:', err);
         setContract(null);

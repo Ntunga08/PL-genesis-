@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { getEncryptionKey, encryptData } from '../utils/encryption';
 import { uploadToPinata } from '../utils/ipfs';
 
 const RECORD_TYPES = {
@@ -94,9 +93,6 @@ export default function AddRecordFormWithEncryption({ contract, patientAddress, 
     setSuccess('');
 
     try {
-      // Get encryption key using PATIENT's address
-      const encryptionKey = await getEncryptionKey(signer, patientAddress);
-      
       // Upload attachments to IPFS first
       let attachmentHashes = [];
       if (attachments.length > 0) {
@@ -205,11 +201,8 @@ export default function AddRecordFormWithEncryption({ contract, patientAddress, 
           break;
       }
       
-      // Encrypt the record data
-      const encryptedData = encryptData(recordData, encryptionKey);
-      
-      // Upload to IPFS
-      const ipfsHash = await uploadToPinata(encryptedData, {
+      // Upload to IPFS (unencrypted for now - V3 will add proper encryption)
+      const ipfsHash = await uploadToPinata(JSON.stringify(recordData), {
         name: `${RECORD_TYPES[recordType].label} - ${new Date().toISOString()}`,
         type: recordType
       });

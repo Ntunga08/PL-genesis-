@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import GrantAccessForm from '../components/GrantAccessForm';
 import RecordsListWithDecryption from '../components/RecordsListWithDecryption';
 import QRCodeCard from '../components/QRCodeCard';
+import ChatBox from '../components/ChatBox';
 
 export default function PatientDashboard({ contract, account, signer, onBack }) {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -99,6 +100,16 @@ export default function PatientDashboard({ contract, account, signer, onBack }) 
               📋 My Records
             </button>
             <button
+              onClick={() => setActiveTab('chat')}
+              className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
+                activeTab === 'chat'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              � Chat with Doctor
+            </button>
+            <button
               onClick={() => setActiveTab('team')}
               className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
                 activeTab === 'team'
@@ -106,7 +117,7 @@ export default function PatientDashboard({ contract, account, signer, onBack }) 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              👥 Grant Access
+              � Grant Access
             </button>
             <button
               onClick={() => setActiveTab('share')}
@@ -145,6 +156,20 @@ export default function PatientDashboard({ contract, account, signer, onBack }) 
                 isPatient={true}
                 signer={signer}
                 refreshKey={refreshKey}
+              />
+            </div>
+          )}
+
+          {activeTab === 'chat' && (
+            <div>
+              <p className="text-sm text-slate-600 mb-4">
+                Communicate securely with your healthcare providers
+              </p>
+              <ChatBox
+                contract={contract}
+                patientAddress={account}
+                currentUser={account}
+                isPatient={true}
               />
             </div>
           )}
