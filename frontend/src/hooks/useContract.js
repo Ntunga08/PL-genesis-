@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Contract, BrowserProvider } from 'ethers';
 import { useWalletClient, usePublicClient } from 'wagmi';
 import { CONTRACT_ADDRESS } from '../constants';
@@ -13,17 +13,24 @@ export function useContract() {
     async function setupContract() {
       try {
         if (walletClient) {
-          // For write operations - need signer
+          console.log('Setting up contract with wallet client');
+          // Create provider from walletClient
           const provider = new BrowserProvider(walletClient);
+          // Get signer
           const signer = await provider.getSigner();
-          const contractWithSigner = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, signer);
-          setContract(contractWithSigner);
+          console.log('Signer address:', await signer.getAddress());
+          // Create contract with signer
+          const contractInstance = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, signer);
+          console.log('Contract created with signer');
+          setContract(contractInstance);
         } else if (publicClient) {
-          // For read-only operations
+          console.log('Setting up read-only contract');
+          // Read-only contract
           const provider = new BrowserProvider(publicClient);
-          const contractReadOnly = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
-          setContract(contractReadOnly);
+          const contractInstance = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
+          setContract(contractInstance);
         } else {
+          console.log('No wallet or public client available');
           setContract(null);
         }
       } catch (err) {
