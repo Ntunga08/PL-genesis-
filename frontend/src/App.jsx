@@ -36,7 +36,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
-      {/* Header */}
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
           <button 
@@ -48,7 +47,6 @@ function App() {
             <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">SDK</span>
           </button>
           
-          {/* RainbowKit Connect Button in Header */}
           <div className="flex items-center gap-3">
             <ConnectButton />
           </div>
@@ -56,18 +54,14 @@ function App() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Network Warning */}
         {account && <NetworkBanner />}
 
         {!account ? (
-          /* Home Page with Connect Button */}
           <div className="max-w-sm mx-auto">
             <Home onSelectRole={setCurrentPage} />
           </div>
         ) : (
-          /* Dashboard Pages */}
           <>
-            {/* Page Router */}
             {currentPage === 'home' && (
               <Home onSelectRole={setCurrentPage} />
             )}
