@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Contract, BrowserProvider } from 'ethers';
 import { useWalletClient, usePublicClient } from 'wagmi';
 import { CONTRACT_ADDRESS } from '../constants';
@@ -7,29 +7,32 @@ import HealthLinkABI from '../abi/HealthLink.json';
 export function useContract() {
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+  const [contract, setContract] = useState(null);
 
-  const contract = useMemo(() => {
-    if (!walletClient && !publicClient) return null;
-
-    try {
-      // For write operations, we need the walletClient
-      if (walletClient) {
-        // Create a custom provider from walletClient
-        const provider = new BrowserProvider(walletClient);
-        return new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
+  useEffect(() => {
+    async function setupContract() {
+      try {
+        if (walletClient) {
+          // For write operations - need signer
+          const provider = new BrowserProvider(walletClient);
+          const signer = await provider.getSigner();
+          const contractWithSigner = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, signer);
+          setContract(contractWithSigner);
+        } else if (publicClient) {
+          // For read-only operations
+          const provider = new BrowserProvider(publicClient);
+          const contractReadOnly = new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
+          setContract(contractReadOnly);
+        } else {
+          setContract(null);
+        }
+      } catch (err) {
+        console.error('Error setting up contract:', err);
+        setContract(null);
       }
-      
-      // For read-only operations, use publicClient
-      if (publicClient) {
-        const provider = new BrowserProvider(publicClient);
-        return new Contract(CONTRACT_ADDRESS, HealthLinkABI.abi, provider);
-      }
-    } catch (err) {
-      console.error('Error setting up contract:', err);
-      return null;
     }
 
-    return null;
+    setupContract();
   }, [walletClient, publicClient]);
 
   return contract;
