@@ -6,13 +6,10 @@ export default function Home({ onSelectRole }) {
 
   return (
     <div className="space-y-6">
-      {/* V2 Badge */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg shadow p-4 text-white text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-2xl">🚀</span>
-          <h2 className="text-lg font-bold">HealthLink V2</h2>
-        </div>
-        <p className="text-xs opacity-90">Powered by RainbowKit • 100+ Wallets • Mobile Support</p>
+      {/* Header Banner */}
+      <div className="bg-white rounded-lg shadow border border-slate-200 p-4 text-center">
+        <h2 className="text-lg font-bold text-slate-800">HealthLink</h2>
+        <p className="text-xs text-slate-600 mt-1">Decentralized Medical Records Management</p>
       </div>
 
       {!isConnected ? (
@@ -64,9 +61,8 @@ export default function Home({ onSelectRole }) {
             {/* Patient */}
             <button 
               onClick={() => onSelectRole('patient')}
-              className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 p-6 rounded-lg hover:border-emerald-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+              className="bg-white border-2 border-slate-200 p-6 rounded-lg hover:border-blue-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
             >
-              <span className="text-2xl mb-2 block">🧑‍⚕️</span>
               <h3 className="text-base font-bold text-slate-800 mb-1">Patient</h3>
               <p className="text-xs text-slate-600">View & manage records</p>
             </button>
@@ -74,9 +70,8 @@ export default function Home({ onSelectRole }) {
             {/* Staff */}
             <button 
               onClick={() => onSelectRole('attendant')}
-              className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 p-6 rounded-lg hover:border-blue-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+              className="bg-white border-2 border-slate-200 p-6 rounded-lg hover:border-blue-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
             >
-              <span className="text-2xl mb-2 block">👨‍⚕️</span>
               <h3 className="text-base font-bold text-slate-800 mb-1">Medical Staff</h3>
               <p className="text-xs text-slate-600">Add patient records</p>
             </button>

@@ -42,9 +42,7 @@ function App() {
             onClick={() => setCurrentPage('home')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <span className="text-lg">🏥</span>
-            <h1 className="text-lg font-bold text-slate-800">HealthLink V2</h1>
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">SDK</span>
+            <h1 className="text-lg font-bold text-slate-800">HealthLink</h1>
           </button>
           
           <div className="flex items-center gap-3">
