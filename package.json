@@ -11,7 +11,7 @@
     "node": "hardhat node"
   },
   "keywords": [],
-  "author": "",
+  "author": "HealthLink Team",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
