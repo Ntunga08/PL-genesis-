@@ -1,6 +1,6 @@
 # HealthLink
 
-> Blockchain-based medical records where patients control access to their health data
+> Blockchain-based medical records for everyday healthcare - hospital transfers, specialist visits, and complete patient control
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-blue)](https://healthlink-v2.netlify.app/)
 [![Contract](https://img.shields.io/badge/Contract-Sepolia-purple)](https://sepolia.etherscan.io/address/0x97A985354D340306633670DB945A736A57102a00)
