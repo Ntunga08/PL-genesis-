@@ -9,7 +9,7 @@
 
 ## The Problem
 
-Medical records are trapped in hospital databases. When you switch doctors, travel abroad, or face emergencies, your health data is inaccessible. Patients don't own their medical history - hospitals do.
+Medical records are trapped in hospital databases. When you switch doctors, change hospitals, visit specialists, or face emergencies, your health data is inaccessible. Patients don't own their medical history - hospitals do.
 
 ## The Solution
 
