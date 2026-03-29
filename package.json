@@ -1,7 +1,7 @@
 {
   "name": "virtualhackathon",
   "version": "1.0.0",
-  "description": "",
+  "description": "Blockchain-based medical records for everyday healthcare",
   "main": "index.js",
   "scripts": {
     "test": "hardhat test",
