@@ -1,5 +1,6 @@
 {
-  "name": "frontend",
+  "name": "healthlink-frontend",
+  "description": "HealthLink - Patient-controlled medical records on blockchain",
   "private": true,
   "version": "0.0.0",
   "type": "module",
