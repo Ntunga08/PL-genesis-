@@ -10,7 +10,7 @@
     "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
     "node": "hardhat node"
   },
-  "keywords": [],
+  "keywords": ["blockchain", "healthcare", "medical-records", "ethereum", "ipfs"],
   "author": "HealthLink Team",
   "license": "ISC",
   "type": "commonjs",
