@@ -19,3 +19,13 @@ artifacts
 # OS
 .DS_Store
 Thumbs.db
+
+# Docs (keep only README)
+TESTING_GUIDE.md
+ENCRYPTION_NOTE.md
+V3_PLAN.md
+*.draft.md
+
+# Temp files
+check_balance.js
+*.log
