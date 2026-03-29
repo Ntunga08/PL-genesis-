@@ -10,3 +10,7 @@ Primary care doctors can refer patients to specialists with full medical context
 
 ### 3. Emergency Situations
 Emergency responders can access critical medical information when patients are unable to communicate.
+
+
+### 4. Chronic Disease Management
+Patients with long-term conditions can track their health journey across multiple providers and years.
