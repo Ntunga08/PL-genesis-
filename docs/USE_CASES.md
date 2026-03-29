@@ -18,3 +18,7 @@ Patients with long-term conditions can track their health journey across multipl
 
 ### 5. Multi-Provider Care Coordination
 Patients seeing multiple doctors can ensure all providers have access to the same up-to-date information.
+
+
+### 6. Second Opinion Consultations
+Easily share medical history with doctors for second opinions without paperwork or delays.
