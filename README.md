@@ -56,6 +56,7 @@ HealthLink puts patients in control using blockchain and decentralized storage:
 ✅ Hospital transfer support  
 ✅ Specialist referral sharing  
 ✅ Emergency access capability  
+✅ Chronic disease management  
 ✅ Image upload for lab tests & imaging  
 ✅ Real-time doctor-patient chat  
 ✅ QR code access sharing  
