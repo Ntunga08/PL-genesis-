@@ -34,30 +34,34 @@ function App() {
     getSigner();
   }, [walletClient]);
 
+  // Check if we're on home page (landing page should be full width)
+  const isHomePage = currentPage === 'home' && !account;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
-      <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
-          <button 
-            onClick={() => setCurrentPage('home')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          >
-            <h1 className="text-lg font-bold text-slate-800">HealthLink</h1>
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <ConnectButton />
+      {/* Hide header on landing page since Home.jsx has its own nav */}
+      {!isHomePage && (
+        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+            <button 
+              onClick={() => setCurrentPage('home')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <h1 className="text-lg font-bold text-slate-800">HealthLink</h1>
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <ConnectButton />
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main className={isHomePage ? '' : 'max-w-4xl mx-auto px-6 py-8'}>
         {account && <NetworkBanner />}
 
         {!account ? (
-          <div className="max-w-sm mx-auto">
-            <Home onSelectRole={setCurrentPage} />
-          </div>
+          <Home onSelectRole={setCurrentPage} />
         ) : (
           <>
             {currentPage === 'home' && (
