@@ -53,6 +53,7 @@ HealthLink puts patients in control using blockchain and decentralized storage:
 ## Features
 
 ✅ 8 professional medical record types  
+✅ Hospital transfer support  
 ✅ Image upload for lab tests & imaging  
 ✅ Real-time doctor-patient chat  
 ✅ QR code access sharing  
