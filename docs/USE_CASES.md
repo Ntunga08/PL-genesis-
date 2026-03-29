@@ -22,3 +22,7 @@ Patients seeing multiple doctors can ensure all providers have access to the sam
 
 ### 6. Second Opinion Consultations
 Easily share medical history with doctors for second opinions without paperwork or delays.
+
+
+### 7. Travel & International Healthcare
+Access medical records when traveling domestically or internationally for seamless care anywhere.
