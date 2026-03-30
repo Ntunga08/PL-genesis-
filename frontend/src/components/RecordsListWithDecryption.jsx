@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { fetchFromIPFS } from '../utils/ipfs';
+import { decryptData } from '../utils/encryption';
 import RecordCard from './RecordCard';
 import LoadingSpinner from './LoadingSpinner';
+import { useWalletClient } from 'wagmi';
 
 export default function RecordsListWithDecryption({ contract, account, patientAddress, isPatient, signer, refreshKey }) {
+  const { data: walletClient } = useWalletClient();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [decryptingAll, setDecryptingAll] = useState(false);
@@ -66,28 +69,49 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
   };
 
   const decryptAllRecords = async () => {
-    if (!signer || records.length === 0) {
-      console.log('Cannot decrypt:', { hasSigner: !!signer, recordCount: records.length });
+    if (!walletClient || records.length === 0) {
+      console.log('Cannot decrypt:', { hasWalletClient: !!walletClient, recordCount: records.length });
       return;
     }
 
     setDecryptingAll(true);
     try {
-      console.log('Loading records from IPFS...');
+      console.log('🔓 Loading all records...');
       
-      // Load all records from IPFS (no encryption for now)
+      // Load and decrypt all records from IPFS
       const loadedRecords = await Promise.all(
         records.map(async (record, index) => {
           if (record.recordType === 'form' && !record.decryptedData) {
             try {
-              console.log(`Fetching record ${index} from IPFS:`, record.ipfsHash);
-              const data = await fetchFromIPFS(record.ipfsHash);
-              // Try to parse as JSON (unencrypted)
-              const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-              console.log(`Record ${index} loaded successfully`);
-              return { ...record, decryptedData: parsed };
+              console.log(`📥 Fetching record ${index} from IPFS:`, record.ipfsHash);
+              
+              // Fetch data from IPFS
+              const ipfsData = await fetchFromIPFS(record.ipfsHash);
+              const parsedData = typeof ipfsData === 'string' ? JSON.parse(ipfsData) : ipfsData;
+              
+              console.log(`📦 Data structure for record ${index}:`, {
+                hasCiphertext: !!parsedData.ciphertext,
+                hasDataToEncryptHash: !!parsedData.dataToEncryptHash,
+                hasAccessControlConditions: !!parsedData.accessControlConditions,
+                hasRecordType: !!parsedData.recordType,
+                keys: Object.keys(parsedData)
+              });
+              
+              // Check if it's Lit Protocol encrypted format
+              if (parsedData.ciphertext && parsedData.dataToEncryptHash && parsedData.accessControlConditions) {
+                console.log(`🔓 Lit Protocol encrypted record ${index} - decrypting...`);
+                
+                // Decrypt with Lit Protocol
+                const decryptedData = await decryptData(parsedData, walletClient);
+                console.log(`✅ Record ${index} decrypted with Lit Protocol`);
+                return { ...record, decryptedData };
+              } else {
+                // Plain JSON format (legacy v2-sdk-integration records)
+                console.log(`📄 Record ${index} is plain JSON (legacy format)`);
+                return { ...record, decryptedData: parsedData };
+              }
             } catch (err) {
-              console.error(`Failed to load record ${index}:`, err);
+              console.error(`❌ Failed to process record ${index}:`, err);
               return { ...record, decryptionError: err.message };
             }
           }
@@ -95,11 +119,11 @@ export default function RecordsListWithDecryption({ contract, account, patientAd
         })
       );
 
-      console.log('All records processed');
+      console.log('✅ All records processed');
       setRecords(loadedRecords);
     } catch (err) {
-      console.error('Error loading records:', err);
-      alert('Error loading records: ' + err.message);
+      console.error('❌ Error processing records:', err);
+      alert('Error processing records: ' + err.message);
     } finally {
       setDecryptingAll(false);
     }
