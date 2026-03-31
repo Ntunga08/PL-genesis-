@@ -3,7 +3,7 @@ import { sepolia } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
   appName: 'HealthLink',
-  projectId: 'YOUR_WALLETCONNECT_PROJECT_ID', // Get free from https://cloud.walletconnect.com/
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '0000000000000000000000000000000000000000',
   chains: [sepolia],
   ssr: false,
 });

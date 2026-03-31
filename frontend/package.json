@@ -11,6 +11,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lit-protocol/auth-helpers": "^7.4.0",
+    "@lit-protocol/constants": "^7.4.0",
+    "@lit-protocol/encryption": "^7.4.0",
+    "@lit-protocol/lit-node-client": "^7.4.0",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.95.2",
@@ -29,10 +33,12 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "buffer": "^6.0.3",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "process": "^0.11.10",
     "vite": "^8.0.1"
   }
 }

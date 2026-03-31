@@ -3,6 +3,7 @@ import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { BrowserProvider } from 'ethers';
 import { useContract } from './hooks/useContract';
+import { useLitProtocol } from './hooks/useLitProtocol';
 import Home from './pages/Home';
 import PatientDashboard from './pages/PatientDashboard';
 import AttendantDashboard from './pages/AttendantDashboard';
@@ -12,6 +13,7 @@ function App() {
   const { address: account } = useAccount();
   const { data: walletClient } = useWalletClient();
   const contract = useContract();
+  const { isInitialized: litInitialized, error: litError } = useLitProtocol();
   const [currentPage, setCurrentPage] = useState('home');
   const [signer, setSigner] = useState(null);
 
@@ -59,6 +61,18 @@ function App() {
 
       <main className={isHomePage ? '' : 'max-w-4xl mx-auto px-6 py-8'}>
         {account && <NetworkBanner />}
+        
+        {/* Lit Protocol Status */}
+        {litError && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+            ⚠️ Lit Protocol initialization failed. Encryption features may not work.
+          </div>
+        )}
+        {!litInitialized && !litError && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            🔥 Initializing Lit Protocol...
+          </div>
+        )}
 
         {!account ? (
           <Home onSelectRole={setCurrentPage} />

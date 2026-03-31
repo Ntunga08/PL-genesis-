@@ -6,4 +6,20 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: '/',  // Root path for Netlify
   plugins: [react(), tailwindcss()],
+  define: {
+    'global': 'globalThis',
+  },
+  resolve: {
+    alias: {
+      'process': 'process/browser',
+      'buffer': 'buffer',
+    }
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
+  }
 })

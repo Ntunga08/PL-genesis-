@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { uploadToPinata } from '../utils/ipfs';
+import { encryptData } from '../utils/encryption';
+import { useWalletClient } from 'wagmi';
 
 const RECORD_TYPES = {
   consultation: { value: 'consultation', label: 'Consultation', icon: '🩺', color: 'blue' },
@@ -13,6 +15,7 @@ const RECORD_TYPES = {
 };
 
 export default function AddRecordFormWithEncryption({ contract, patientAddress, signer, onSuccess }) {
+  const { data: walletClient } = useWalletClient();
   const [recordType, setRecordType] = useState('consultation');
   const [formData, setFormData] = useState({
     // Common fields
@@ -201,11 +204,18 @@ export default function AddRecordFormWithEncryption({ contract, patientAddress, 
           break;
       }
       
-      // Upload to IPFS (unencrypted for now - V3 will add proper encryption)
-      const ipfsHash = await uploadToPinata(JSON.stringify(recordData), {
+      // Encrypt and upload to IPFS with Lit Protocol
+      console.log('🔒 Encrypting with Lit Protocol...');
+      const encryptedPackage = await encryptData(recordData, patientAddress, walletClient);
+      console.log('✅ Encryption complete');
+      
+      // Upload encrypted package to IPFS
+      const ipfsHash = await uploadToPinata(JSON.stringify(encryptedPackage), {
         name: `${RECORD_TYPES[recordType].label} - ${new Date().toISOString()}`,
-        type: recordType
+        type: recordType,
+        encrypted: true
       });
+      console.log('✅ Uploaded to IPFS:', ipfsHash);
       
       // Store hash on blockchain
       const tx = await contract.addRecord(
