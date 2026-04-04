@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, Save, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Save, FileText, History } from 'lucide-react';
 import { ICD10Search } from '@/components/ICD10Search';
+import api from '@/lib/api';
 
 interface ProvisionalDiagnosisFormProps {
   open: boolean;
@@ -73,6 +74,7 @@ export function ProvisionalDiagnosisForm({
   });
 
   const [hasDraft, setHasDraft] = useState(false);
+  const [autofillSource, setAutofillSource] = useState<'previous_visit' | 'patient_record' | null>(null);
 
   // Load existing data when visit changes
   useEffect(() => {
@@ -121,6 +123,78 @@ export function ProvisionalDiagnosisForm({
       setFormData(initialData);
     }
   }, [visit]);
+
+  // Autofill from patient record + previous visits if current visit has no history yet
+  useEffect(() => {
+    if (!visit?.patient?.id || !open) return;
+
+    // Only autofill if the current visit has no history filled in yet
+    const hasExistingHistory = visit.past_medical_history || visit.family_social_history || visit.history_present_illness;
+    if (hasExistingHistory) return;
+
+    const patientId = visit.patient.id;
+
+    const fetchHistory = async () => {
+      try {
+        // Fetch patient record (has allergies, blood_group, medical_history)
+        const [patientRes, visitsRes] = await Promise.all([
+          api.get(`/patients/${patientId}`),
+          api.get(`/visits?patient_id=${patientId}&limit=10`)
+        ]);
+
+        const patient = patientRes.data?.patient;
+        const previousVisits: any[] = (visitsRes.data?.visits || [])
+          .filter((v: any) => v.id !== visit.id && v.provisional_diagnosis_completed)
+          .sort((a: any, b: any) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
+
+        const lastVisit = previousVisits[0] || null;
+
+        // Build autofill data — only fill fields that are currently empty
+        const autofill: Partial<typeof formData> = {};
+        let source: typeof autofillSource = null;
+
+        // From patient record
+        if (patient?.medical_history || patient?.allergies) {
+          const pmh = [
+            patient.medical_history ? `Medical History: ${patient.medical_history}` : '',
+            patient.allergies ? `Allergies: ${patient.allergies}` : '',
+            patient.blood_group ? `Blood Group: ${patient.blood_group}` : '',
+          ].filter(Boolean).join('\n');
+
+          if (pmh) {
+            autofill.past_medical_history = pmh;
+            source = 'patient_record';
+          }
+        }
+
+        // From last completed visit — richer history
+        if (lastVisit) {
+          if (lastVisit.past_medical_history) autofill.past_medical_history = lastVisit.past_medical_history;
+          if (lastVisit.family_social_history) autofill.family_social_history = lastVisit.family_social_history;
+          if (lastVisit.obstetric_history)     autofill.obstetric_history     = lastVisit.obstetric_history;
+          if (lastVisit.developmental_milestones) autofill.developmental_milestones = lastVisit.developmental_milestones;
+          if (lastVisit.review_of_systems)     autofill.review_of_systems     = lastVisit.review_of_systems;
+          source = 'previous_visit';
+        }
+
+        if (Object.keys(autofill).length > 0) {
+          setFormData(prev => {
+            const merged = { ...prev };
+            // Only fill fields that are still empty
+            (Object.keys(autofill) as (keyof typeof formData)[]).forEach(key => {
+              if (!prev[key]) merged[key] = autofill[key] as any;
+            });
+            return merged;
+          });
+          setAutofillSource(source);
+        }
+      } catch {
+        // silently fail — autofill is best-effort
+      }
+    };
+
+    fetchHistory();
+  }, [visit?.id, open]);
 
   // Auto-save draft data when form changes
   useEffect(() => {
@@ -210,6 +284,12 @@ export function ProvisionalDiagnosisForm({
                 Draft Available
               </Badge>
             )}
+            {autofillSource && !hasDraft && (
+              <Badge variant="outline" className="ml-2 text-green-700 border-green-300 bg-green-50 flex items-center gap-1">
+                <History className="h-3 w-3" />
+                {autofillSource === 'previous_visit' ? 'History autofilled from last visit' : 'History autofilled from patient record'}
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Complete medical assessment for {visit?.patient?.full_name}
@@ -257,7 +337,7 @@ export function ProvisionalDiagnosisForm({
                     {/* Chief Complaint */}
                     <div>
                       <Label htmlFor="chief_complaint_detailed" className="text-sm font-medium">
-                        Chief Complaint (C/C) *
+                        Chief Complaint (C/C)
                       </Label>
                       <Textarea
                         id="chief_complaint_detailed"
@@ -391,7 +471,7 @@ export function ProvisionalDiagnosisForm({
                     {/* Provisional Diagnosis */}
                     <div>
                       <Label htmlFor="provisional_diagnosis" className="text-sm font-medium">
-                        Provisional Diagnosis *
+                        Provisional Diagnosis
                       </Label>
                       <Textarea
                         id="provisional_diagnosis"
@@ -554,7 +634,7 @@ export function ProvisionalDiagnosisForm({
           </Button>
           <Button 
             onClick={handleSave} 
-            disabled={loading || !formData.chief_complaint_detailed || !formData.provisional_diagnosis}
+            disabled={loading}
             className="flex items-center gap-2"
           >
             <Save className="h-4 w-4" />

@@ -154,6 +154,9 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // ICD-10 Code Search
     Route::get('/icd10/search', [ICD10Controller::class, 'search']);
+    Route::get('/icd10/stats', [ICD10Controller::class, 'stats']);
+    Route::post('/icd10/import', [ICD10Controller::class, 'import']);
+    Route::post('/icd10/debug-pdf', [ICD10Controller::class, 'debugPdf']);
 
     // Departments
     Route::get('/departments', [DepartmentController::class, 'index']);

@@ -58,6 +58,7 @@ import AdminReports from '@/components/AdminReports';
 import ActivityLogsView from '@/components/ActivityLogsView';
 import PatientReports from '@/components/PatientReports';
 import LowStockInventoryReport from '@/components/LowStockInventoryReport';
+import { ICD10ImportManager } from '@/components/ICD10ImportManager';
 // Using dynamic import for code splitting
 const EnhancedAppointmentBooking = React.lazy(() => import('@/components/EnhancedAppointmentBooking'));
 
@@ -2709,6 +2710,11 @@ export default function AdminDashboard() {
         {/* Patient Reports Section - For searching individual patient medical history */}
         <div className="no-print">
           <PatientReports />
+        </div>
+
+        {/* ICD-10 Import Manager */}
+        <div className="no-print">
+          <ICD10ImportManager />
         </div>
 
         {/* Medical services management moved to Medical Services page */}

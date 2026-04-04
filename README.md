@@ -1,213 +1,138 @@
-# Hospital Management System
+# Haset Hospital Management System
 
-A comprehensive hospital management system built with React (Frontend) and Laravel (Backend).
+A full-stack hospital management system built with React (frontend) and Laravel (backend), deployed at [hasetcompany.or.tz](https://hasetcompany.or.tz).
 
-## Features
-
-### Core Functionality
-- **Multi-Role Dashboard**: Admin, Doctor, Nurse, Receptionist, Pharmacist, Lab Technician, Billing, Patient
-- **Patient Management**: Registration, appointments, medical records
-- **Appointment System**: Booking, scheduling, and tracking
-- **Pharmacy Management**: Medication inventory, dispensing, stock tracking with search
-- **Laboratory**: Test ordering, results management with search
-- **Billing & Payments**: Invoice generation, payment processing, insurance claims
-- **Mobile Money Integration**: ZenoPay payment gateway support
-- **Workflow Management**: Patient journey tracking from registration to discharge
-
-### Recent Improvements
-- ✅ **Quick Service**: Direct patient routing to pharmacy, lab, or doctor with invoice creation
-- ✅ **Walk-In Patient Flow**: Proper routing based on visit type (Consultation, Lab Only, Pharmacy Only)
-- ✅ **Search Functionality**: Added search in pharmacy inventory and lab tests queue
-- ✅ **Low Stock Reports**: Admin can print low stock inventory with hospital logo
-- ✅ **Logo Integration**: Hospital logo appears in all print reports
+---
 
 ## Tech Stack
 
-### Frontend
-- React 18 with TypeScript
-- Vite for build tooling
-- TailwindCSS for styling
-- Shadcn/ui components
-- React Query for data fetching
-- React Router for navigation
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| Backend | Laravel 12, PHP, Sanctum (API auth) |
+| Database | MySQL |
+| Payments | ZenoPay |
+| Real-time | Socket.io |
 
-### Backend
-- Laravel 11
-- SQLite/MySQL database
-- Sanctum for authentication
-- RESTful API architecture
+---
 
-## Installation
+## Roles
 
-### Prerequisites
-- Node.js 18+ and npm
+| Role | Access |
+|---|---|
+| Admin | Full system access, user management, reports, ICD-10 import |
+| Doctor | Patient consultations, diagnosis, lab orders, prescriptions |
+| Nurse | Vitals, triage, patient intake |
+| Lab | Lab test processing and results |
+| Pharmacy | Prescription dispensing, inventory |
+| Billing | Invoices, payments, insurance claims |
+| Receptionist | Appointments, patient registration |
+
+---
+
+## Local Development
+
+### Requirements
 - PHP 8.2+
 - Composer
-- SQLite or MySQL
+- Node.js 18+
+- MySQL
 
-### Frontend Setup
-
-```bash
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-
-# Update .env with your API URL
-VITE_API_URL=http://localhost:8000/api
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-### Backend Setup
+### Backend setup
 
 ```bash
 cd backend
-
-# Install dependencies
 composer install
-
-# Create .env file
-cp .env.example .env
-
-# Generate application key
+cp .env.example .env        # or create .env manually
 php artisan key:generate
-
-# Run migrations
-php artisan migrate
-
-# Seed database (optional)
-php artisan db:seed
-
-# Start development server
+php artisan migrate --force
+php artisan db:seed --force
 php artisan serve
 ```
 
-## Development
+### Frontend setup
 
-### Running Locally
-
-1. Start the backend server:
 ```bash
-cd backend
-php artisan serve
-```
-
-2. Start the frontend dev server:
-```bash
+npm install
 npm run dev
 ```
 
-3. Access the application at `http://localhost:5173`
+Frontend runs on `http://localhost:5173`, backend on `http://localhost:8000`.
 
-### Default Test Users
+---
 
-After seeding, you can login with:
-- **Admin**: admin@hospital.com / password
-- **Doctor**: doctor@hospital.com / password
-- **Nurse**: nurse@hospital.com / password
-- **Receptionist**: receptionist@hospital.com / password
-- **Pharmacist**: pharmacist@hospital.com / password
+## Default Login Credentials (local)
 
-## Deployment
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@test.com | admin123 |
+| Doctor | doctor@test.com | doctor123 |
+| Lab | lab@test.com | lab123 |
 
-### Production Build
+---
 
+## ICD-10 Integration
+
+The system supports full ICD-10 diagnosis coding used by doctors during consultations and automatically included in insurance claim submissions.
+
+### Load ICD-10 codes
+
+**Option 1 — Download full dataset (94k codes, requires internet):**
 ```bash
-# Build frontend
+php artisan icd10:download
+```
+
+**Option 2 — Tanzania QRC codes only:**
+```bash
+php artisan db:seed --class=TanzaniaICD10Seeder --force
+```
+
+**Option 3 — Upload via Admin Dashboard:**
+Go to Admin → ICD-10 Code Database → upload a CSV, Excel, or PDF file.
+
+### How it works
+- Doctors search codes by name or code (e.g. `malaria`, `J18`) during consultation
+- Codes attach to both provisional and final diagnosis on the visit record
+- Insurance claims automatically include the ICD-10 code in the NHIF API payload
+
+---
+
+## Production Deployment
+
+### Files to upload after changes
+```
+backend/app/
+backend/routes/api.php
+backend/database/migrations/
+backend/bootstrap/app.php
+dist/                        # built frontend
+```
+
+### After uploading backend changes
+```bash
+php artisan migrate --force
+php artisan config:clear
+php artisan route:clear
+php artisan cache:clear
+```
+
+### Build frontend for production
+```bash
 npm run build
-
-# The dist/ folder contains the production build
 ```
 
-### Server Requirements
+Upload the `dist/` folder to `public_html/`.
 
-- Apache/Nginx web server
-- PHP 8.2+
-- MySQL 5.7+ or SQLite
-- Composer
-- Node.js (for building)
+---
 
-### Deployment Structure
+## Key Features
 
-```
-public_html/
-├── index.html          # Frontend (from dist/)
-├── assets/             # Frontend assets
-├── .htaccess          # Apache config with API routing
-└── api/               # Backend (Laravel)
-    ├── app/
-    ├── public/
-    │   └── index.php
-    └── ...
-```
-
-### .htaccess Configuration
-
-The `.htaccess` file in `public/` is configured to route API requests to the Laravel backend:
-
-```apache
-# Route API requests to Laravel
-RewriteCond %{REQUEST_URI} ^/api/
-RewriteRule ^api/(.*)$ api/public/index.php/$1 [L,QSA]
-
-# Route everything else to React
-RewriteRule . /index.html [L]
-```
-
-## API Documentation
-
-The API follows RESTful conventions. Base URL: `/api`
-
-### Authentication
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout
-- `GET /api/auth/me` - Get current user
-
-### Patients
-- `GET /api/patients` - List patients
-- `POST /api/patients` - Create patient
-- `GET /api/patients/{id}` - Get patient
-- `PUT /api/patients/{id}` - Update patient
-
-### Appointments
-- `GET /api/appointments` - List appointments
-- `POST /api/appointments` - Create appointment
-- `PUT /api/appointments/{id}` - Update appointment
-
-### Pharmacy
-- `GET /api/pharmacy/medications` - List medications
-- `POST /api/pharmacy/medications` - Add medication
-- `PUT /api/pharmacy/medications/{id}` - Update medication stock
-
-See backend routes in `backend/routes/api.php` for complete API reference.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Recent Updates
-
-See `COMPLETE_FIXES_SUMMARY.md` for detailed information about recent fixes and improvements.
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
-
-
-
-
-
+- Patient registration and medical history
+- Appointment booking and workflow (Reception → Nurse → Doctor → Lab → Pharmacy → Billing)
+- Doctor consultation with ICD-10 diagnosis coding and autofill from previous visits
+- Lab test ordering and results
+- Prescription management and pharmacy dispensing
+- Invoice generation and payment processing (cash, mobile money via ZenoPay)
+- Insurance claims with NHIF Tanzania API integration
+- Admin reports and activity logs
+- Real-time updates via Socket.io
