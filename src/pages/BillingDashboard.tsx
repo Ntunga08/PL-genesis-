@@ -159,11 +159,12 @@ export default function BillingDashboard() {
   const [patientReportDateTo, setPatientReportDateTo] = useState<string>('');
   const [hospitalSettings, setHospitalSettings] = useState({
     hospital_name: 'Hospital Management System',
-    hospital_address: '[Address to be configured]',
-    hospital_phone: '[Phone to be configured]',
-    hospital_email: '[Email to be configured]',
-    hospital_website: '[Website to be configured]',
-    hospital_license: '[License to be configured]'
+    hospital_address: '',
+    hospital_phone: '',
+    hospital_email: '',
+    hospital_website: '',
+    hospital_license: '',
+    hospital_tagline: '',
   });
   const [logoUrl, setLogoUrl] = useState('/placeholder.svg');
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
@@ -423,11 +424,12 @@ export default function BillingDashboard() {
 
         setHospitalSettings({
           hospital_name: settingsObj.hospital_name || 'Hospital Management System',
-          hospital_address: settingsObj.hospital_address || '[Address to be configured]',
-          hospital_phone: settingsObj.hospital_phone || '[Phone to be configured]',
-          hospital_email: settingsObj.hospital_email || '[Email to be configured]',
-          hospital_website: settingsObj.hospital_website || '[Website to be configured]',
-          hospital_license: settingsObj.hospital_license || '[License to be configured]'
+          hospital_address: settingsObj.hospital_address || '',
+          hospital_phone: settingsObj.hospital_phone || '',
+          hospital_email: settingsObj.hospital_email || '',
+          hospital_website: settingsObj.hospital_website || '',
+          hospital_license: settingsObj.hospital_license || '',
+          hospital_tagline: settingsObj.hospital_tagline || '',
         });
 
         // Fetch logo
@@ -480,33 +482,42 @@ export default function BillingDashboard() {
   };
 
   // Hospital information template
-  const getHospitalHeader = () => `
+  const getHospitalHeader = () => {
+    const { hospital_name, hospital_address, hospital_phone, hospital_email, hospital_website, hospital_license, hospital_tagline } = hospitalSettings;
+    const contactParts = [
+      hospital_phone && `📞 ${hospital_phone}`,
+      hospital_email && `📧 ${hospital_email}`,
+    ].filter(Boolean).join(' &nbsp;|&nbsp; ');
+    const infoParts = [
+      hospital_website && `🌐 ${hospital_website}`,
+      hospital_license && `License: ${hospital_license}`,
+    ].filter(Boolean).join(' &nbsp;|&nbsp; ');
+
+    return `
     <div class="hospital-header">
       <div class="hospital-logo">
-        <img src="${logoUrl}" alt="Hospital Logo" style="width: 80px; height: 80px; object-fit: contain;" onerror="this.src='/placeholder.svg'" />
+        ${logoUrl && logoUrl !== '/placeholder.svg'
+          ? `<img src="${logoUrl}" alt="Logo" style="width:80px;height:80px;object-fit:contain;" />`
+          : ''}
       </div>
       <div class="hospital-info">
-        <h1>${hospitalSettings.hospital_name}</h1>
-        <h2>Medical Center & Healthcare Services</h2>
+        <h1>${hospital_name}</h1>
+        ${hospital_tagline ? `<h2>${hospital_tagline}</h2>` : ''}
         <div class="contact-info">
-          <p>📍 ${hospitalSettings.hospital_address}</p>
-          <p>📞 ${hospitalSettings.hospital_phone} | 📧 ${hospitalSettings.hospital_email}</p>
-          <p>🌐 ${hospitalSettings.hospital_website} | License: ${hospitalSettings.hospital_license}</p>
+          ${hospital_address ? `<p>📍 ${hospital_address}</p>` : ''}
+          ${contactParts ? `<p>${contactParts}</p>` : ''}
+          ${infoParts ? `<p>${infoParts}</p>` : ''}
         </div>
       </div>
       <div class="report-info">
         <div class="report-id">Report ID: RPT-${Date.now()}</div>
         <div class="generated-date">Generated: ${new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric', 
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
         })}</div>
       </div>
-    </div>
-  `;
+    </div>`;
+  };
 
   // Helper function to generate service description from invoice items
   const getInvoiceServiceDescription = (invoice: any) => {
@@ -825,188 +836,135 @@ export default function BillingDashboard() {
   // Print Functions
   const printPendingInvoicesReport = async () => {
     try {
-      // Fetch detailed patient services for pending billing
-      const servicesResponse = await api.get('/patient-services');
-      const allServices = servicesResponse.data.services || [];
-      
-      const printContent = `
-        <html>
-          <head>
-            <title>Pending Invoices Report with Service Details</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-              .date { text-align: right; margin-bottom: 20px; font-size: 12px; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f5f5f5; font-weight: bold; }
-              .total { font-weight: bold; background-color: #f9f9f9; }
-              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-              .service-details { font-size: 11px; background: #f8f9fa; padding: 3px; border-radius: 2px; margin: 1px 0; }
-              .service-item { display: block; margin: 1px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Pending Invoices Report</h1>
-              <h3>Patients Awaiting Billing with Service Details</h3>
-            </div>
-            <div class="date">Generated on: ${new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Patient Name</th>
-                  <th>Phone</th>
-                  <th>Visit Date</th>
-                  <th>Services Used</th>
-                  <th>Amount (TSh)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${billingVisits.map(visit => {
-                  const patient = patients.find(p => p.id === visit.patient_id) || visit.patient;
-                  const patientServicesList = allServices.filter(s => s.patient_id === visit.patient_id);
-                  const totalCost = patientCosts[visit.patient_id] || 0;
-                  
-                  const servicesDisplay = patientServicesList.length > 0 
-                    ? patientServicesList.map(service => {
-                        const serviceName = service.service?.name || service.service_name || 'Unknown Service';
-                        const serviceType = service.service?.service_type || service.service_type || '';
-                        const quantity = service.quantity || 1;
-                        const price = service.total_price || service.unit_price || service.service?.base_price || service.price || 0;
-                        
-                        return `<span class="service-item">${serviceName}${serviceType ? ` (${serviceType})` : ''} - Qty: ${quantity} - TSh${Number(price).toFixed(2)}</span>`;
-                      }).join('')
-                    : '<span class="service-item">No services recorded</span>';
-                  
-                  return `
-                    <tr>
-                      <td>${patient?.full_name || 'Unknown'}</td>
-                      <td>${patient?.phone || 'N/A'}</td>
-                      <td>${visit.visit_date ? format(new Date(visit.visit_date), 'MMM dd, yyyy') : 'N/A'}</td>
-                      <td class="service-details">${servicesDisplay}</td>
-                      <td>${totalCost.toFixed(2)}</td>
-                    </tr>
-                  `;
-                }).join('')}
-                <tr class="total">
-                  <td colspan="4"><strong>Total Pending Amount</strong></td>
-                  <td><strong>TSh ${billingVisits.reduce((sum, visit) => sum + (patientCosts[visit.patient_id] || 0), 0).toFixed(2)}</strong></td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="footer">
-              <p>Hospital Management System - Pending Invoices Report with Service Details</p>
-              <p>Total Patients: ${billingVisits.length} | Total Amount: TSh ${billingVisits.reduce((sum, visit) => sum + (patientCosts[visit.patient_id] || 0), 0).toFixed(2)}</p>
-            </div>
-          </body>
-        </html>
-      `;
-      
-      handlePrint(printContent, 'Pending Invoices Report with Details');
-    } catch (error) {
+      const invoicesRes = await api.get('/billing/invoices');
+      const pendingInvoices = (invoicesRes.data.invoices || []).filter((inv: any) => inv && inv.status !== 'Paid');
 
+      const rows = pendingInvoices.map((inv: any) => {
+        const forWhat = inv.items && inv.items.length > 0
+          ? inv.items.map((i: any) => i.description).join(', ')
+          : inv.notes || 'General Services';
+        const total = Number(inv.total_amount || 0);
+        const paid = Number(inv.paid_amount || 0);
+        const balance = total - paid;
+        return `
+          <tr>
+            <td>${inv.patient?.full_name || 'Unknown'}</td>
+            <td>${inv.patient?.phone || 'N/A'}</td>
+            <td>${inv.invoice_date ? format(new Date(inv.invoice_date), 'dd MMM yyyy') : 'N/A'}</td>
+            <td>${forWhat}</td>
+            <td style="text-align:right">TSh ${total.toLocaleString('en', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right">TSh ${paid.toLocaleString('en', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right;color:#dc2626;font-weight:bold">TSh ${balance.toLocaleString('en', {minimumFractionDigits:2})}</td>
+          </tr>`;
+      }).join('');
+
+      const totalAmount = pendingInvoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0);
+      const totalPaid = pendingInvoices.reduce((s: number, i: any) => s + Number(i.paid_amount || 0), 0);
+      const totalBalance = totalAmount - totalPaid;
+
+      handlePrint(`
+        <html><head><title>Pending Invoices Report</title><style>
+          body{font-family:Arial,sans-serif;margin:20px;font-size:13px}
+          h1{text-align:center;margin-bottom:4px} h3{text-align:center;color:#555;margin-top:0}
+          .meta{text-align:right;font-size:11px;color:#666;margin-bottom:16px}
+          table{width:100%;border-collapse:collapse;margin-bottom:20px}
+          th,td{border:1px solid #ddd;padding:7px 9px;text-align:left}
+          th{background:#f0f0f0;font-weight:bold}
+          tr:nth-child(even){background:#fafafa}
+          .total-row{background:#fff3cd;font-weight:bold}
+          .footer{text-align:center;font-size:11px;color:#888;margin-top:20px;border-top:1px solid #ddd;padding-top:10px}
+        </style></head><body>
+          <h1>Pending Invoices Report</h1>
+          <h3>Patients with Outstanding Balances</h3>
+          <div class="meta">Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}</div>
+          <table>
+            <thead><tr>
+              <th>Patient Name</th><th>Phone</th><th>Date</th><th>For What</th>
+              <th style="text-align:right">Amount (TSh)</th>
+              <th style="text-align:right">Paid (TSh)</th>
+              <th style="text-align:right">Balance (TSh)</th>
+            </tr></thead>
+            <tbody>
+              ${rows}
+              <tr class="total-row">
+                <td colspan="4"><strong>TOTALS</strong></td>
+                <td style="text-align:right"><strong>TSh ${totalAmount.toLocaleString('en', {minimumFractionDigits:2})}</strong></td>
+                <td style="text-align:right"><strong>TSh ${totalPaid.toLocaleString('en', {minimumFractionDigits:2})}</strong></td>
+                <td style="text-align:right;color:#dc2626"><strong>TSh ${totalBalance.toLocaleString('en', {minimumFractionDigits:2})}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="footer">Total Records: ${pendingInvoices.length} &nbsp;|&nbsp; Total Outstanding: TSh ${totalBalance.toLocaleString('en', {minimumFractionDigits:2})}</div>
+        </body></html>
+      `, 'Pending Invoices Report');
+    } catch (error) {
       toast.error('Failed to generate pending invoices report');
     }
   };
 
   const printPaidInvoicesReport = async () => {
     try {
-      // Fetch detailed invoice data with items
-      const invoicesWithItemsResponse = await api.get('/billing/invoices');
-      const detailedInvoices = (invoicesWithItemsResponse.data.invoices || []).filter(invoice => invoice); // Add null check
-      
-      const paidInvoices = detailedInvoices
-        .filter(invoice => invoice && invoice.status === 'Paid'); // Add null check
-      
-      const printContent = `
-        <html>
-          <head>
-            <title>Paid Invoices Report with Service Details</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-              .date { text-align: right; margin-bottom: 20px; font-size: 12px; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f5f5f5; font-weight: bold; }
-              .total { font-weight: bold; background-color: #f9f9f9; }
-              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-              .service-details { font-size: 11px; background: #f8f9fa; padding: 3px; border-radius: 2px; margin: 1px 0; }
-              .service-item { display: block; margin: 1px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Paid Invoices Report</h1>
-              <h3>All Fully Paid Invoices with Service Details</h3>
-            </div>
-            <div class="date">Generated on: ${new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Services</th>
-                  <th>Patient Name</th>
-                  <th>Phone</th>
-                  <th>Service Details</th>
-                  <th>Total Amount</th>
-                  <th>Paid Amount</th>
-                  <th>Invoice Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${paidInvoices.map(invoice => {
-                  const servicesDisplay = invoice.items && invoice.items.length > 0 
-                    ? invoice.items.map(item => 
-                        `<span class="service-item">${item.description} (Qty: ${item.quantity || 1}) - TSh${Number(item.total_price || item.unit_price || 0).toFixed(2)}</span>`
-                      ).join('')
-                    : '<span class="service-item">No detailed services available</span>';
-                  
-                  return `
-                    <tr>
-                      <td><strong>${getInvoiceServiceDescription(invoice)}</strong></td>
-                      <td>${invoice.patient?.full_name || 'Unknown'}</td>
-                      <td>${invoice.patient?.phone || 'N/A'}</td>
-                      <td class="service-details">${servicesDisplay}</td>
-                      <td>TSh ${Number(invoice.total_amount || 0).toFixed(2)}</td>
-                      <td>TSh ${Number(invoice.paid_amount || 0).toFixed(2)}</td>
-                      <td>${invoice.invoice_date ? format(new Date(invoice.invoice_date), 'MMM dd, yyyy') : 'N/A'}</td>
-                    </tr>
-                  `;
-                }).join('')}
-                <tr class="total">
-                  <td colspan="4"><strong>Total Revenue</strong></td>
-                  <td><strong>TSh ${paidInvoices.reduce((sum, invoice) => sum + Number(invoice.total_amount || 0), 0).toFixed(2)}</strong></td>
-                  <td><strong>TSh ${paidInvoices.reduce((sum, invoice) => sum + Number(invoice.paid_amount || 0), 0).toFixed(2)}</strong></td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="footer">
-              <p>Hospital Management System - Paid Invoices Report with Service Details</p>
-              <p>Total Invoices: ${paidInvoices.length} | Total Revenue: TSh ${paidInvoices.reduce((sum, invoice) => sum + Number(invoice.paid_amount || 0), 0).toFixed(2)}</p>
-            </div>
-          </body>
-        </html>
-      `;
-      
-      handlePrint(printContent, 'Paid Invoices Report with Details');
-    } catch (error) {
+      const invoicesRes = await api.get('/billing/invoices');
+      const paidInvoices = (invoicesRes.data.invoices || []).filter((inv: any) => inv && inv.status === 'Paid');
 
+      const rows = paidInvoices.map((inv: any) => {
+        const forWhat = inv.items && inv.items.length > 0
+          ? inv.items.map((i: any) => i.description).join(', ')
+          : inv.notes || 'General Services';
+        const total = Number(inv.total_amount || 0);
+        const paid = Number(inv.paid_amount || 0);
+        const balance = total - paid;
+        return `
+          <tr>
+            <td>${inv.patient?.full_name || 'Unknown'}</td>
+            <td>${inv.patient?.phone || 'N/A'}</td>
+            <td>${inv.invoice_date ? format(new Date(inv.invoice_date), 'dd MMM yyyy') : 'N/A'}</td>
+            <td>${forWhat}</td>
+            <td style="text-align:right">TSh ${total.toLocaleString('en', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right;color:#059669;font-weight:bold">TSh ${paid.toLocaleString('en', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right">${balance > 0 ? `TSh ${balance.toLocaleString('en', {minimumFractionDigits:2})}` : '—'}</td>
+          </tr>`;
+      }).join('');
+
+      const totalAmount = paidInvoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0);
+      const totalPaid = paidInvoices.reduce((s: number, i: any) => s + Number(i.paid_amount || 0), 0);
+
+      handlePrint(`
+        <html><head><title>Paid Invoices Report</title><style>
+          body{font-family:Arial,sans-serif;margin:20px;font-size:13px}
+          h1{text-align:center;margin-bottom:4px} h3{text-align:center;color:#555;margin-top:0}
+          .meta{text-align:right;font-size:11px;color:#666;margin-bottom:16px}
+          table{width:100%;border-collapse:collapse;margin-bottom:20px}
+          th,td{border:1px solid #ddd;padding:7px 9px;text-align:left}
+          th{background:#f0f0f0;font-weight:bold}
+          tr:nth-child(even){background:#fafafa}
+          .total-row{background:#d1fae5;font-weight:bold}
+          .footer{text-align:center;font-size:11px;color:#888;margin-top:20px;border-top:1px solid #ddd;padding-top:10px}
+        </style></head><body>
+          <h1>Paid Invoices Report</h1>
+          <h3>All Completed Payments</h3>
+          <div class="meta">Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}</div>
+          <table>
+            <thead><tr>
+              <th>Patient Name</th><th>Phone</th><th>Date</th><th>For What</th>
+              <th style="text-align:right">Amount (TSh)</th>
+              <th style="text-align:right">Paid (TSh)</th>
+              <th style="text-align:right">Balance (TSh)</th>
+            </tr></thead>
+            <tbody>
+              ${rows}
+              <tr class="total-row">
+                <td colspan="4"><strong>TOTALS</strong></td>
+                <td style="text-align:right"><strong>TSh ${totalAmount.toLocaleString('en', {minimumFractionDigits:2})}</strong></td>
+                <td style="text-align:right;color:#059669"><strong>TSh ${totalPaid.toLocaleString('en', {minimumFractionDigits:2})}</strong></td>
+                <td style="text-align:right">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="footer">Total Records: ${paidInvoices.length} &nbsp;|&nbsp; Total Revenue: TSh ${totalPaid.toLocaleString('en', {minimumFractionDigits:2})}</div>
+        </body></html>
+      `, 'Paid Invoices Report');
+    } catch (error) {
       toast.error('Failed to generate paid invoices report');
     }
   };
@@ -1130,72 +1088,57 @@ export default function BillingDashboard() {
   };
 
   const printTodaysPaymentsReport = () => {
-    const printContent = `
-      <html>
-        <head>
-          <title>Today's Payments Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-            .date { text-align: right; margin-bottom: 20px; font-size: 12px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f5f5f5; font-weight: bold; }
-            .total { font-weight: bold; background-color: #f9f9f9; }
-            .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Today's Payments Report</h1>
-            <h3>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
-          </div>
-          <div class="date">Generated on: ${new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Patient Name</th>
-                <th>Amount</th>
-                <th>Payment Method</th>
-                <th>Reference</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rawPaymentsData.map(payment => `
-                <tr>
-                  <td>${payment.payment_date ? format(new Date(payment.payment_date), 'HH:mm') : 'N/A'}</td>
-                  <td>${payment.patient?.full_name || 'Unknown'}</td>
-                  <td>TSh ${Number(payment.amount || 0).toFixed(2)}</td>
-                  <td>${payment.payment_method || 'N/A'}</td>
-                  <td>${payment.reference_number || 'N/A'}</td>
-                  <td>${payment.status || 'N/A'}</td>
-                </tr>
-              `).join('')}
-              <tr class="total">
-                <td colspan="2"><strong>Total Today's Revenue</strong></td>
-                <td><strong>TSh ${rawPaymentsData.reduce((sum, p) => sum + Number(p.amount || 0), 0).toFixed(2)}</strong></td>
-                <td colspan="3"></td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="footer">
-            <p>Hospital Management System - Daily Payments Report</p>
-            <p>Total Payments: ${rawPaymentsData.length} | Total Amount: TSh ${rawPaymentsData.reduce((sum, p) => sum + Number(p.amount || 0), 0).toFixed(2)}</p>
-          </div>
-        </body>
-      </html>
-    `;
-    
-    handlePrint(printContent, "Today's Payments Report");
+    const rows = rawPaymentsData.map((payment: any) => {
+      const forWhat = payment.invoice?.items?.length > 0
+        ? payment.invoice.items.map((i: any) => i.description).join(', ')
+        : payment.notes || payment.invoice?.notes || 'Payment';
+      return `
+        <tr>
+          <td>${payment.patient?.full_name || 'Unknown'}</td>
+          <td>${payment.patient?.phone || 'N/A'}</td>
+          <td>${payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM yyyy, HH:mm') : 'N/A'}</td>
+          <td>${forWhat}</td>
+          <td style="text-align:right;color:#059669;font-weight:bold">TSh ${Number(payment.amount || 0).toLocaleString('en', {minimumFractionDigits:2})}</td>
+          <td>${payment.payment_method || 'N/A'}</td>
+          <td>${payment.reference_number || '—'}</td>
+        </tr>`;
+    }).join('');
+
+    const total = rawPaymentsData.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+
+    handlePrint(`
+      <html><head><title>Today's Payments Report</title><style>
+        body{font-family:Arial,sans-serif;margin:20px;font-size:13px}
+        h1{text-align:center;margin-bottom:4px} h3{text-align:center;color:#555;margin-top:0}
+        .meta{text-align:right;font-size:11px;color:#666;margin-bottom:16px}
+        table{width:100%;border-collapse:collapse;margin-bottom:20px}
+        th,td{border:1px solid #ddd;padding:7px 9px;text-align:left}
+        th{background:#f0f0f0;font-weight:bold}
+        tr:nth-child(even){background:#fafafa}
+        .total-row{background:#d1fae5;font-weight:bold}
+        .footer{text-align:center;font-size:11px;color:#888;margin-top:20px;border-top:1px solid #ddd;padding-top:10px}
+      </style></head><body>
+        <h1>Today's Payments Report</h1>
+        <h3>${format(new Date(), 'EEEE, dd MMMM yyyy')}</h3>
+        <div class="meta">Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}</div>
+        <table>
+          <thead><tr>
+            <th>Patient Name</th><th>Phone</th><th>Date &amp; Time</th><th>For What</th>
+            <th style="text-align:right">Amount (TSh)</th>
+            <th>Method</th><th>Reference</th>
+          </tr></thead>
+          <tbody>
+            ${rows}
+            <tr class="total-row">
+              <td colspan="4"><strong>TOTAL REVENUE TODAY</strong></td>
+              <td style="text-align:right;color:#059669"><strong>TSh ${total.toLocaleString('en', {minimumFractionDigits:2})}</strong></td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="footer">Total Payments: ${rawPaymentsData.length} &nbsp;|&nbsp; Total: TSh ${total.toLocaleString('en', {minimumFractionDigits:2})}</div>
+      </body></html>
+    `, "Today's Payments Report");
   };
 
   const printComprehensiveBillingReport = async () => {
