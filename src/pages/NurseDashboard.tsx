@@ -1808,7 +1808,7 @@ export default function NurseDashboard() {
   // Lab patient search effect
   useEffect(() => {
     const searchLabPatients = async () => {
-      if (labPatientSearchTerm.length < 2) {
+      if (labPatientSearchTerm.length < 1) {
         setLabPatientSearchResults([]);
         return;
       }

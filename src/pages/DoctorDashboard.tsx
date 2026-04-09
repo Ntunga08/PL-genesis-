@@ -2125,7 +2125,7 @@ export default function DoctorDashboard() {
                 value={patientSearchTerm}
                 onChange={(e) => {
                   setPatientSearchTerm(e.target.value);
-                  if (e.target.value.length >= 2) {
+                  if (e.target.value.length >= 1) {
                     searchPatients(e.target.value);
                   } else {
                     setSearchResults([]);
@@ -2136,7 +2136,7 @@ export default function DoctorDashboard() {
               <Button
                 variant="outline"
                 onClick={() => searchPatients(patientSearchTerm)}
-                disabled={searchLoading || patientSearchTerm.length < 2}
+                disabled={searchLoading || patientSearchTerm.length < 1}
               >
                 {searchLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -2210,12 +2210,11 @@ export default function DoctorDashboard() {
               <div className="text-center py-4 text-muted-foreground text-sm">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>Enter patient name, phone number, or ID to search</p>
-                <p className="text-xs mt-1">Minimum 2 characters required</p>
               </div>
             )}
 
             {/* No Results */}
-            {patientSearchTerm.length >= 2 && searchResults.length === 0 && !searchLoading && (
+            {patientSearchTerm.length >= 1 && searchResults.length === 0 && !searchLoading && (
               <div className="text-center py-4 text-muted-foreground text-sm">
                 <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No patients found matching "{patientSearchTerm}"</p>

@@ -22,6 +22,7 @@ interface Medication {
   id: string;
   name: string;
   stock_quantity: number;
+  initial_quantity?: number;
   quantity_in_stock?: number; // Legacy field for compatibility
   reorder_level: number;
   [key: string]: any;
@@ -103,6 +104,7 @@ export default function PharmacyDashboard() {
   const [existingPrescriptions, setExistingPrescriptions] = useState<any[]>([]); // Doctor prescriptions for current patient
   const [removedPrescriptionItems, setRemovedPrescriptionItems] = useState<Set<string>>(new Set()); // Track removed prescription items
   const [medicationSearchTerm, setMedicationSearchTerm] = useState('');
+  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
   const [newPrescriptionItems, setNewPrescriptionItems] = useState<any[]>([{
     medication_id: '',
     medication_name: '',
@@ -728,42 +730,42 @@ export default function PharmacyDashboard() {
       return;
     }
 
+    const isRestock = newQuantity > (selectedMedication.stock_quantity || 0);
+
     try {
-      // Update stock on server
-      const response = await api.put(`/pharmacy/medications/${selectedMedication.id}`, { 
+      await api.put(`/pharmacy/medications/${selectedMedication.id}`, { 
         stock_quantity: newQuantity,
-        quantity_in_stock: newQuantity 
+        quantity_in_stock: newQuantity,
+        ...(isRestock ? { initial_quantity: newQuantity } : {}),
       });
 
-      // Immediately update local state to reflect the change
+      const now = new Date().toISOString();
       setMedications(prev => prev.map(med => 
         med.id === selectedMedication.id 
-          ? { ...med, stock_quantity: newQuantity, quantity_in_stock: newQuantity }
+          ? { 
+              ...med, 
+              stock_quantity: newQuantity, 
+              quantity_in_stock: newQuantity,
+              stock_updated_at: now,
+              ...(isRestock ? { initial_quantity: newQuantity } : {}),
+            }
           : med
       ));
       
-      // Recalculate stats
       const updatedMeds = medications.map(med => 
         med.id === selectedMedication.id 
-          ? { ...med, stock_quantity: newQuantity, quantity_in_stock: newQuantity }
+          ? { ...med, stock_quantity: newQuantity }
           : med
       );
-      
-      const lowStock = updatedMeds.filter(m => 
-        (m.stock_quantity || m.quantity_in_stock || 0) <= m.reorder_level
-      ).length;
-      
+      const lowStock = updatedMeds.filter(m => (m.stock_quantity || 0) <= m.reorder_level).length;
       setStats(prev => ({ ...prev, lowStock }));
       
       toast.success(`Stock updated to ${newQuantity} units`);
       setStockDialogOpen(false);
       setSelectedMedication(null);
-      
-      // Also refresh from server to ensure consistency
       setTimeout(() => loadPharmacyData(false), 500);
     } catch (error: any) {
-
-      toast.error(error.response?.data?.error || 'Failed to update stock');
+      toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to update stock');
       return;
     }
   };
@@ -795,6 +797,7 @@ export default function PharmacyDashboard() {
 
     const medicationData = {
       name: formData.get('name') as string,
+      generic_name: formData.get('genericName') as string || '',
       description: formData.get('description') as string || '',
       quantity_in_stock: Number(quantity),
       reorder_level: Number(reorderLevel),
@@ -1682,8 +1685,8 @@ export default function PharmacyDashboard() {
                   <Input
                     type="text"
                     placeholder="Search medications by name, generic name, or strength..."
-                    value={medicationSearchTerm}
-                    onChange={(e) => setMedicationSearchTerm(e.target.value)}
+                    value={inventorySearchTerm}
+                    onChange={(e) => setInventorySearchTerm(e.target.value)}
                     className="max-w-md"
                   />
                 </div>
@@ -1695,17 +1698,18 @@ export default function PharmacyDashboard() {
                         <TableHead>Generic Name</TableHead>
                         <TableHead>Strength</TableHead>
                         <TableHead>Form</TableHead>
-                        <TableHead>Stock</TableHead>
+                        <TableHead>Stock (Remaining / Uploaded)</TableHead>
                         <TableHead>Reorder Level</TableHead>
                         <TableHead>Price</TableHead>
+                        <TableHead>Last Restocked</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {medications.filter(med => {
-                        if (!medicationSearchTerm) return true;
-                        const searchLower = medicationSearchTerm.toLowerCase();
+                        if (!inventorySearchTerm) return true;
+                        const searchLower = inventorySearchTerm.toLowerCase();
                         return (
                           med.name.toLowerCase().includes(searchLower) ||
                           (med.generic_name && med.generic_name.toLowerCase().includes(searchLower)) ||
@@ -1719,9 +1723,21 @@ export default function PharmacyDashboard() {
                             <TableCell className="text-muted-foreground">{med.generic_name || 'Not specified'}</TableCell>
                             <TableCell>{med.strength}</TableCell>
                             <TableCell className="text-muted-foreground">{med.dosage_form || 'Tablet'}</TableCell>
-                            <TableCell className="font-semibold">{med.stock_quantity || med.quantity_in_stock || 0}</TableCell>
+                            <TableCell className="font-semibold">
+                              <span className={`${(med.stock_quantity || med.quantity_in_stock || 0) === 0 ? 'text-red-600' : ''}`}>
+                                {med.stock_quantity || med.quantity_in_stock || 0}
+                              </span>
+                              {med.initial_quantity > 0 && (
+                                <span className="text-muted-foreground text-xs ml-1">/ {med.initial_quantity}</span>
+                              )}
+                            </TableCell>
                             <TableCell>{med.reorder_level}</TableCell>
                             <TableCell className="font-medium">TSh{Number(med.unit_price).toFixed(2)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {med.stock_updated_at
+                                ? format(new Date(med.stock_updated_at), 'dd MMM yyyy')
+                                : '—'}
+                            </TableCell>
                             <TableCell>
                               <Badge variant={isLowStock ? 'destructive' : 'default'}>
                                 {isLowStock ? 'Low Stock' : 'In Stock'}
@@ -1969,13 +1985,21 @@ export default function PharmacyDashboard() {
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleUpdateStock} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentStock">Current Stock</Label>
-                      <Input
-                        id="currentStock"
-                        value={selectedMedication?.stock_quantity || selectedMedication?.quantity_in_stock || 0}
-                        disabled
-                      />
+                    <div className="grid grid-cols-2 gap-3 text-sm bg-muted/40 rounded-lg p-3">
+                      <div>
+                        <p className="text-muted-foreground">Current Stock</p>
+                        <p className="font-semibold text-lg">{selectedMedication?.stock_quantity || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Uploaded (Initial)</p>
+                        <p className="font-semibold text-lg">{selectedMedication?.initial_quantity || 0}</p>
+                      </div>
+                      {selectedMedication?.stock_updated_at && (
+                        <div className="col-span-2">
+                          <p className="text-muted-foreground">Last Updated</p>
+                          <p className="font-medium">{format(new Date(selectedMedication.stock_updated_at), 'dd MMM yyyy, HH:mm')}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="quantity">New Stock Quantity *</Label>
@@ -1983,9 +2007,10 @@ export default function PharmacyDashboard() {
                         id="quantity"
                         name="quantity"
                         type="number"
-                        defaultValue={selectedMedication?.stock_quantity || selectedMedication?.quantity_in_stock || 0}
+                        defaultValue={selectedMedication?.stock_quantity || 0}
                         required
                       />
+                      <p className="text-xs text-muted-foreground">Setting a higher value will also update the uploaded quantity.</p>
                     </div>
                     <Button type="submit" className="w-full">Update Stock</Button>
                   </form>

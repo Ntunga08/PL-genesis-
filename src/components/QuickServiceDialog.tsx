@@ -71,7 +71,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
   // Patient search effect
   useEffect(() => {
     const searchPatients = async () => {
-      if (patientSearchTerm.length < 2) {
+      if (patientSearchTerm.length < 1) {
         setSearchResults([]);
         return;
       }
@@ -632,7 +632,7 @@ export function QuickServiceDialog({ open, onOpenChange, patient, onSuccess }: Q
                         ))}
                       </div>
                     )}
-                    {patientSearchTerm.length >= 2 && searchResults.length === 0 && (
+                    {patientSearchTerm.length >= 1 && searchResults.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-2">
                         No patients found
                       </p>

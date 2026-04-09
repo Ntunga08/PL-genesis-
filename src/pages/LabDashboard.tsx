@@ -9,12 +9,27 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import api from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { FlaskConical, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { FlaskConical, AlertCircle, CheckCircle, Clock, Loader2, Eye, Edit, History } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function LabDashboard() {
+  const { primaryRole } = useAuth();
+  const isAdmin = primaryRole === 'admin';
+
+  // Returns minutes remaining in the 30-min edit window (negative = expired)
+  const editMinutesLeft = (createdAt: string) => {
+    const elapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
+    return Math.round(30 - elapsed);
+  };
+
+  const canEdit = (test: any) => {
+    if (isAdmin) return true;
+    return editMinutesLeft(test.created_at) > 0;
+  };
   const [labTests, setLabTests] = useState<any[]>([]);
   const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0 });
   const [loading, setLoading] = useState(true); // Initial load only
@@ -27,6 +42,16 @@ export default function LabDashboard() {
   const [addTestDialogOpen, setAddTestDialogOpen] = useState(false);
   const [labTestServices, setLabTestServices] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState(''); // Search functionality
+  const [historyTests, setHistoryTests] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historySelectedTest, setHistorySelectedTest] = useState<any>(null);
+  const [historyEditMode, setHistoryEditMode] = useState(false);
+  const [historyEditResults, setHistoryEditResults] = useState<Record<string, string>>({});
+  const [historyRange, setHistoryRange] = useState<'today' | '2days' | 'week' | 'month' | 'custom'>('week');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
 
   const [newTestData, setNewTestData] = useState({
     test_name: '',
@@ -54,6 +79,97 @@ export default function LabDashboard() {
     } catch (error) {
 
       // Don't show error toast, just log it
+    }
+  };
+
+  const fetchHistory = async (range?: typeof historyRange, from?: string, to?: string) => {
+    setHistoryLoading(true);
+    try {
+      const now = new Date();
+      let fromDate = '';
+      let toDate = new Date().toISOString().split('T')[0];
+
+      const r = range ?? historyRange;
+      if (r === 'today') {
+        fromDate = toDate;
+      } else if (r === '2days') {
+        const d = new Date(now); d.setDate(d.getDate() - 2);
+        fromDate = d.toISOString().split('T')[0];
+      } else if (r === 'week') {
+        const d = new Date(now); d.setDate(d.getDate() - 7);
+        fromDate = d.toISOString().split('T')[0];
+      } else if (r === 'month') {
+        const d = new Date(now); d.setMonth(d.getMonth() - 1);
+        fromDate = d.toISOString().split('T')[0];
+      } else if (r === 'custom') {
+        fromDate = from ?? historyFrom;
+        toDate = to ?? historyTo;
+      }
+
+      const params = fromDate ? `&from=${fromDate}&to=${toDate}` : '';
+
+      const [completedRes, draftRes] = await Promise.allSettled([
+        api.get(`/labs?status=Completed&limit=200${params}`),
+        api.get(`/labs?status=Draft&limit=200${params}`),
+      ]);
+      const completed = completedRes.status === 'fulfilled' ? (completedRes.value.data.labTests || []) : [];
+      const drafts = draftRes.status === 'fulfilled' ? (draftRes.value.data.labTests || []) : [];
+      setHistoryTests([...drafts, ...completed]);
+    } catch {
+      toast.error('Failed to load history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const toSave = selectedPatientTests.filter(t => batchResults[t.id]?.result_value);
+      if (toSave.length === 0) {
+        toast.error('Fill in at least one result to save as draft');
+        return;
+      }
+      await Promise.all(
+        toSave.map(test => {
+          const result = batchResults[test.id];
+          const formatted = {
+            draft: true,
+            test_date: new Date().toISOString(),
+            results: {
+              [test.test_name]: {
+                value: result.result_value,
+                unit: result.unit || '',
+                normal_range: result.reference_range || '',
+                status: result.abnormal_flag ? 'Abnormal' : 'Normal',
+              },
+            },
+            interpretation: result.notes || '',
+          };
+          return api.put(`/labs/${test.id}`, { results: JSON.stringify(formatted), status: 'Draft' });
+        })
+      );
+      toast.success('Saved as draft — you can continue later from History');
+      setBatchDialogOpen(false);
+      setSelectedPatientTests([]);
+      setBatchResults({});
+      fetchData(false);
+    } catch {
+      toast.error('Failed to save draft');
+    }
+  };
+
+  const handleHistoryEditSave = async (test: any) => {
+    try {
+      let parsed: any = {};
+      try { parsed = JSON.parse(test.results || '{}'); } catch {}
+      parsed.interpretation = historyEditResults[test.id] ?? parsed.interpretation ?? '';
+      await api.put(`/labs/${test.id}`, { results: JSON.stringify(parsed), status: 'Completed' });
+      toast.success('Result updated');
+      setHistoryEditMode(false);
+      setHistorySelectedTest(null);
+      fetchHistory();
+    } catch {
+      toast.error('Failed to update result');
     }
   };
 
@@ -670,6 +786,17 @@ export default function LabDashboard() {
         </div>
 
         {/* Lab Tests Table */}
+        <Tabs defaultValue="queue" onValueChange={(v) => { if (v === 'history') fetchHistory(historyRange); }}>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="queue" className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" /> Active Queue
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="h-4 w-4" /> History
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="queue">
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -918,9 +1045,227 @@ export default function LabDashboard() {
           </CardContent>
         </Card>
 
+          </TabsContent>
 
+          {/* History Tab */}
+          <TabsContent value="history">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-4 w-4" /> Lab Test History
+                </CardTitle>
+                <CardDescription>Completed tests and saved drafts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Filters row */}
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  {/* Quick range buttons */}
+                  <div className="flex gap-1">
+                    {(['today', '2days', 'week', 'month', 'custom'] as const).map(r => (
+                      <button
+                        key={r}
+                        onClick={() => {
+                          setHistoryRange(r);
+                          if (r !== 'custom') fetchHistory(r);
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          historyRange === r
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                        }`}
+                      >
+                        {r === 'today' ? 'Today' : r === '2days' ? '2 Days' : r === 'week' ? 'This Week' : r === 'month' ? 'This Month' : 'Custom'}
+                      </button>
+                    ))}
+                  </div>
 
-        {/* View Tests Dialog - Read Only (What needs to be tested) */}
+                  {/* Custom date inputs */}
+                  {historyRange === 'custom' && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={historyFrom}
+                        onChange={(e) => setHistoryFrom(e.target.value)}
+                        className="border rounded px-2 py-1 text-sm"
+                      />
+                      <span className="text-muted-foreground text-sm">to</span>
+                      <input
+                        type="date"
+                        value={historyTo}
+                        onChange={(e) => setHistoryTo(e.target.value)}
+                        className="border rounded px-2 py-1 text-sm"
+                      />
+                      <button
+                        onClick={() => fetchHistory('custom', historyFrom, historyTo)}
+                        className="px-3 py-1 rounded bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Search */}
+                  <Input
+                    placeholder="Search by patient name or test name..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    className="max-w-xs ml-auto"
+                  />
+                </div>
+                {historyLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Test Name</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Result</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historyTests
+                        .filter(t => {
+                          if (!historySearch) return true;
+                          const s = historySearch.toLowerCase();
+                          return (
+                            t.patient?.full_name?.toLowerCase().includes(s) ||
+                            t.test_name?.toLowerCase().includes(s)
+                          );
+                        })
+                        .map(test => {
+                          let resultSummary = '—';
+                          try {
+                            const parsed = JSON.parse(test.results || '{}');
+                            const firstKey = Object.keys(parsed.results || {})[0];
+                            if (firstKey) resultSummary = `${parsed.results[firstKey].value} ${parsed.results[firstKey].unit || ''}`.trim();
+                          } catch {}
+                          return (
+                            <TableRow key={test.id}>
+                              <TableCell>
+                                <div className="font-medium">{test.patient?.full_name || 'Unknown'}</div>
+                                <div className="text-xs text-muted-foreground">{test.patient?.phone}</div>
+                              </TableCell>
+                              <TableCell>{test.test_name}</TableCell>
+                              <TableCell>
+                                <Badge variant={test.status === 'Draft' ? 'secondary' : 'default'}>
+                                  {test.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {test.created_at ? format(new Date(test.created_at), 'dd MMM yyyy') : '—'}
+                              </TableCell>
+                              <TableCell className="text-sm">{resultSummary}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => {
+                                    setHistorySelectedTest(test);
+                                    setHistoryEditMode(false);
+                                    setHistoryDialogOpen(true);
+                                  }}>
+                                    <Eye className="h-3 w-3 mr-1" /> View
+                                  </Button>
+                                  {canEdit(test) ? (
+                                    <Button size="sm" variant="default" onClick={() => {
+                                      setHistorySelectedTest(test);
+                                      setHistoryEditMode(true);
+                                      let parsed: any = {};
+                                      try { parsed = JSON.parse(test.results || '{}'); } catch {}
+                                      setHistoryEditResults({ [test.id]: parsed.interpretation || '' });
+                                      setHistoryDialogOpen(true);
+                                    }}>
+                                      <Edit className="h-3 w-3 mr-1" />
+                                      Edit
+                                      {!isAdmin && test.created_at && (
+                                        <span className="ml-1 text-[10px] opacity-70">
+                                          ({editMinutesLeft(test.created_at)}m left)
+                                        </span>
+                                      )}
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" variant="outline" disabled title="Edit window expired — only admin can edit">
+                                      <Edit className="h-3 w-3 mr-1 opacity-40" />
+                                      <span className="opacity-50">Locked</span>
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      {historyTests.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            No history found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* History View/Edit Dialog */}
+        <Dialog open={historyDialogOpen} onOpenChange={(o) => { if (!o) { setHistoryDialogOpen(false); setHistorySelectedTest(null); setHistoryEditMode(false); } }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{historyEditMode ? 'Edit Result' : 'View Result'} — {historySelectedTest?.test_name}</DialogTitle>
+              <DialogDescription>{historySelectedTest?.patient?.full_name}</DialogDescription>
+            </DialogHeader>
+            {historySelectedTest && (() => {
+              let parsed: any = {};
+              try { parsed = JSON.parse(historySelectedTest.results || '{}'); } catch {}
+              const results = parsed.results || {};
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-sm bg-muted/40 rounded-lg p-3">
+                    <div><span className="text-muted-foreground">Status:</span> <Badge variant={historySelectedTest.status === 'Draft' ? 'secondary' : 'default'}>{historySelectedTest.status}</Badge></div>
+                    <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{historySelectedTest.created_at ? format(new Date(historySelectedTest.created_at), 'dd MMM yyyy HH:mm') : '—'}</span></div>
+                  </div>
+                  {Object.entries(results).map(([name, val]: [string, any]) => (
+                    <div key={name} className="border rounded-lg p-3 space-y-1">
+                      <p className="font-semibold">{name}</p>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div><span className="text-muted-foreground">Value:</span> <span className="font-medium">{val.value} {val.unit}</span></div>
+                        <div><span className="text-muted-foreground">Range:</span> <span>{val.normal_range || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Flag:</span> <Badge variant={val.status === 'Abnormal' ? 'destructive' : 'outline'}>{val.status}</Badge></div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="space-y-2">
+                    <Label>Interpretation / Notes</Label>
+                    {historyEditMode ? (
+                      <Textarea
+                        value={historyEditResults[historySelectedTest.id] ?? parsed.interpretation ?? ''}
+                        onChange={(e) => setHistoryEditResults(prev => ({ ...prev, [historySelectedTest.id]: e.target.value }))}
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-sm bg-muted/40 rounded p-2 min-h-[60px]">{parsed.interpretation || '—'}</p>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t">
+                    <Button variant="outline" onClick={() => setHistoryDialogOpen(false)}>Close</Button>
+                    {historyEditMode && canEdit(historySelectedTest) && (
+                      <Button onClick={() => handleHistoryEditSave(historySelectedTest)}>Save Changes</Button>
+                    )}
+                    {historyEditMode && !canEdit(historySelectedTest) && !isAdmin && (
+                      <p className="text-xs text-red-500 self-center">Edit window expired. Contact admin.</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
         <Dialog open={batchDialogOpen && isViewMode && selectedPatientTests.length > 0} onOpenChange={(open) => {
           if (!open) {
             setBatchDialogOpen(false);
@@ -1210,6 +1555,9 @@ export default function LabDashboard() {
                 <Button onClick={handleSubmitBatchResults}>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Submit All Results
+                </Button>
+                <Button variant="outline" onClick={handleSaveDraft}>
+                  Save as Draft
                 </Button>
               </div>
             </div>

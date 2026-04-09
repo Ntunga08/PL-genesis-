@@ -916,7 +916,7 @@ export default function ReceptionistDashboard() {
       return;
     }
 
-    if (!returningPatientSearch.trim() || returningPatientSearch.trim().length < 2) {
+    if (!returningPatientSearch.trim() || returningPatientSearch.trim().length < 1) {
       setReturningPatientResults([]);
       return;
     }
@@ -1255,7 +1255,7 @@ export default function ReceptionistDashboard() {
   // Real-time search with debounce
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (searchQuery.trim().length >= 2) {
+      if (searchQuery.trim().length >= 1) {
         searchPatients(searchQuery);
       } else if (searchQuery.trim().length === 0) {
         setSearchResults([]);
@@ -2543,7 +2543,7 @@ export default function ReceptionistDashboard() {
           <div className="space-y-4">
             <div className="relative">
               <Input
-                placeholder="Search by name or phone (min 2 characters)..."
+                placeholder="Search by name or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 disabled={loading}
@@ -2578,11 +2578,8 @@ export default function ReceptionistDashboard() {
                 ))}
               </div>
             )}
-            {searchResults.length === 0 && searchQuery.trim().length >= 2 && !loading && (
+            {searchResults.length === 0 && searchQuery.trim().length >= 1 && !loading && (
               <p className="text-center text-muted-foreground py-8">No patients found matching "{searchQuery}"</p>
-            )}
-            {searchQuery.trim().length > 0 && searchQuery.trim().length < 2 && (
-              <p className="text-center text-muted-foreground py-8">Type at least 2 characters to search</p>
             )}
           </div>
         </DialogContent>
@@ -3010,7 +3007,7 @@ export default function ReceptionistDashboard() {
             <div>
               <Label>Search Patient</Label>
               <Input
-                placeholder="Search by name or phone (min 2 characters)..."
+                placeholder="Search by name or phone..."
                 value={returningPatientSearch}
                 onChange={(e) => setReturningPatientSearch(e.target.value)}
                 autoFocus
@@ -3023,10 +3020,8 @@ export default function ReceptionistDashboard() {
             <div className="max-h-96 overflow-y-auto border rounded-lg">
               {returningPatientResults.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  {returningPatientSearch.trim().length >= 2 
-                    ? `No patients found matching "${returningPatientSearch}"` 
-                    : returningPatientSearch.trim().length > 0
-                    ? 'Type at least 2 characters to search'
+                  {returningPatientSearch.trim().length >= 1
+                    ? `No patients found matching "${returningPatientSearch}"`
                     : 'Start typing to search for patients'}
                 </div>
               ) : (

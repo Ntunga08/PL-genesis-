@@ -35,7 +35,7 @@ export function ICD10Search({
 
   const search = useCallback((value: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (value.length < 2) { setResults([]); setOpen(false); return; }
+    if (value.length < 1) { setResults([]); setOpen(false); return; }
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
@@ -112,7 +112,7 @@ export function ICD10Search({
             </div>
           )}
 
-          {open && !loading && query.length >= 2 && results.length === 0 && (
+          {open && !loading && query.length >= 1 && results.length === 0 && (
             <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-sm px-3 py-2 text-sm text-muted-foreground">
               No codes found for "{query}"
             </div>

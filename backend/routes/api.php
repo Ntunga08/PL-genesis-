@@ -708,14 +708,18 @@ Route::middleware('auth:sanctum')->group(function () {
             'quantity_in_stock' => 'required|integer|min:0',
             'unit_price' => 'required|numeric|min:0',
         ]);
-        
+
+        $qty = $request->quantity_in_stock ?? $request->stock_quantity ?? 0;
+
         $medication = \App\Models\Medication::create([
             'id' => \Illuminate\Support\Str::uuid(),
             'name' => $request->name,
             'generic_name' => $request->generic_name,
             'dosage_form' => $request->dosage_form,
             'strength' => $request->strength,
-            'stock_quantity' => $request->quantity_in_stock ?? $request->stock_quantity ?? 0,
+            'stock_quantity' => $qty,
+            'initial_quantity' => $qty,
+            'stock_updated_at' => now(),
             'unit_price' => $request->unit_price,
             'manufacturer' => $request->manufacturer,
             'expiry_date' => $request->expiry_date,
@@ -732,6 +736,7 @@ Route::middleware('auth:sanctum')->group(function () {
             $validated = $request->validate([
                 'quantity_in_stock' => 'sometimes|integer|min:0',
                 'stock_quantity' => 'sometimes|integer|min:0',
+                'initial_quantity' => 'sometimes|integer|min:0',
                 'name' => 'sometimes|string',
                 'generic_name' => 'sometimes|string|nullable',
                 'category' => 'sometimes|string|nullable',
@@ -746,10 +751,20 @@ Route::middleware('auth:sanctum')->group(function () {
             ]);
             
             // Handle both quantity_in_stock and stock_quantity
-            // Convert quantity_in_stock to stock_quantity (SQLite only has stock_quantity)
             if (isset($validated['quantity_in_stock'])) {
-                $validated['stock_quantity'] = $validated['quantity_in_stock'];
-                unset($validated['quantity_in_stock']); // Remove to avoid column error
+                $newQty = $validated['quantity_in_stock'];
+                $validated['stock_quantity'] = $newQty;
+                unset($validated['quantity_in_stock']);
+
+                if ($newQty > $medication->stock_quantity) {
+                    $validated['initial_quantity'] = $newQty;
+                }
+                $validated['stock_updated_at'] = now();
+            } elseif (isset($validated['stock_quantity'])) {
+                if ($validated['stock_quantity'] > $medication->stock_quantity) {
+                    $validated['initial_quantity'] = $validated['stock_quantity'];
+                }
+                $validated['stock_updated_at'] = now();
             }
             
             $medication->update($validated);
@@ -862,6 +877,14 @@ Route::middleware('auth:sanctum')->group(function () {
         
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->has('from')) {
+            $query->whereDate('created_at', '>=', $request->from);
+        }
+
+        if ($request->has('to')) {
+            $query->whereDate('created_at', '<=', $request->to);
         }
         
         if ($request->has('limit')) {
@@ -978,6 +1001,27 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::put('/labs/{id}', function(Request $request, $id) {
         $labTest = \App\Models\LabTest::findOrFail($id);
+
+        // 30-minute edit window: only lab staff can edit within 30 min of creation
+        // After that, only admin can edit
+        $createdAt = $labTest->created_at;
+        $minutesSinceCreation = $createdAt ? now()->diffInMinutes($createdAt) : 0;
+        $isWithinEditWindow = $minutesSinceCreation <= 30;
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && $currentUser->role === 'admin';
+
+        // Only block edits to results/status fields (not workflow updates from other stages)
+        $isResultEdit = $request->hasAny(['results', 'status']) &&
+                        !in_array($request->status, ['In Progress', 'Pending', 'Ordered', 'Sample Collected', 'Cancelled']);
+
+        if ($isResultEdit && !$isWithinEditWindow && !$isAdmin) {
+            return response()->json([
+                'error' => 'Edit window expired',
+                'message' => 'Lab results can only be edited within 30 minutes of creation. Please contact an admin.',
+                'created_at' => $createdAt,
+                'minutes_elapsed' => $minutesSinceCreation,
+            ], 403);
+        }
         
         // Prevent marking as Completed without results
         if ($request->has('status') && $request->status === 'Completed') {
