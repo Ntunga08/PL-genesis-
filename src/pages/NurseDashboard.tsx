@@ -1983,12 +1983,21 @@ export default function NurseDashboard() {
 
       // Fetch visits waiting for nurse - don't filter by nurse_status in API call
       // because some visits may have NULL nurse_status
-      const visitsResponse = await api.get('/visits?current_stage=nurse&overall_status=Active');
-      const allVisits = Array.isArray(visitsResponse.data.visits) ? visitsResponse.data.visits : [];
+      const [visitsResponse, multiOrderResponse] = await Promise.allSettled([
+        api.get('/visits?current_stage=nurse&overall_status=Active'),
+        api.get('/visits?nurse_status=Pending&overall_status=Active'),
+      ]);
+      const allVisits = [
+        ...(visitsResponse.status === 'fulfilled' ? (visitsResponse.value.data.visits || []) : []),
+        ...(multiOrderResponse.status === 'fulfilled' ? (multiOrderResponse.value.data.visits || []) : []),
+      ];
+      // Deduplicate by id
+      const seen = new Set();
+      const uniqueVisits = allVisits.filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
       
       // Filter for visits that are pending for nurse (including patients returning from lab)
-      const visitsData = allVisits.filter(v => 
-        v.current_stage === 'nurse' && 
+      const visitsData = uniqueVisits.filter(v => 
+        (v.current_stage === 'nurse' || v.current_stage === 'multi_order') && 
         (!v.nurse_status || 
          v.nurse_status === 'Pending' || 
          v.nurse_status === 'Pending Review' || // Patients returning from lab

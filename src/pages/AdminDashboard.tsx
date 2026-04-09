@@ -2663,7 +2663,7 @@ export default function AdminDashboard() {
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search patients…"
+                  placeholder="Search by name or phone…"
                   className="h-8 w-48"
                 />
               </div>

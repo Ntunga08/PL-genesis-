@@ -99,6 +99,17 @@ export default function PharmacyDashboard() {
   const [directPharmacyQueue, setDirectPharmacyQueue] = useState<any[]>([]); // Direct-to-pharmacy patients
   const [prescriptionQueue, setPrescriptionQueue] = useState<any[]>([]); // Doctor prescription patients
   const [createPrescriptionDialogOpen, setCreatePrescriptionDialogOpen] = useState(false);
+
+  // Walk-in patient registration (pharmacist)
+  const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
+  const [walkInLoading, setWalkInLoading] = useState(false);
+  const [walkInForm, setWalkInForm] = useState({
+    full_name: '', date_of_birth: '', gender: '', phone: '', address: ''
+  });
+  const [walkInMode, setWalkInMode] = useState<'search' | 'new'>('search');
+  const [walkInSearch, setWalkInSearch] = useState('');
+  const [walkInSearchResults, setWalkInSearchResults] = useState<any[]>([]);
+  const [walkInSearchLoading, setWalkInSearchLoading] = useState(false);
   
   const [selectedPatientForPrescription, setSelectedPatientForPrescription] = useState<any>(null);
   const [existingPrescriptions, setExistingPrescriptions] = useState<any[]>([]); // Doctor prescriptions for current patient
@@ -332,6 +343,97 @@ export default function PharmacyDashboard() {
     }
     
     setCreatePrescriptionDialogOpen(true);
+  };
+
+  const handleWalkInSearch = async (q: string) => {
+    setWalkInSearch(q);
+    if (!q.trim()) { setWalkInSearchResults([]); return; }
+    setWalkInSearchLoading(true);
+    try {
+      const res = await api.get(`/patients?search=${encodeURIComponent(q)}&limit=10`);
+      setWalkInSearchResults(res.data.patients || []);
+    } catch { setWalkInSearchResults([]); }
+    finally { setWalkInSearchLoading(false); }
+  };
+
+  const handleServeExistingPatient = async (patient: any) => {
+    setWalkInLoading(true);
+    try {
+      await api.post('/visits', {
+        patient_id: patient.id,
+        visit_date: new Date().toISOString().split('T')[0],
+        visit_type: 'Pharmacy Only',
+        reception_status: 'Completed',
+        reception_completed_at: new Date().toISOString(),
+        current_stage: 'pharmacy',
+        nurse_status: 'Not Required',
+        doctor_status: 'Not Required',
+        lab_status: 'Not Required',
+        pharmacy_status: 'Pending',
+        billing_status: 'Not Required',
+        overall_status: 'Active',
+        notes: 'Returning patient — walk-in pharmacy',
+      });
+      toast.success(`${patient.full_name} added to pharmacy queue`);
+      setWalkInDialogOpen(false);
+      setWalkInSearch('');
+      setWalkInSearchResults([]);
+      setWalkInMode('search');
+      loadPharmacyData(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to add patient to queue');
+    } finally { setWalkInLoading(false); }
+  };
+
+  const handleWalkInRegister = async () => {
+    const { full_name, date_of_birth, gender, phone, address } = walkInForm;
+    if (!full_name || !date_of_birth || !gender || !phone) {
+      toast.error('Name, date of birth, gender and phone are required');
+      return;
+    }
+    if (!['Male', 'Female', 'Other'].includes(gender)) {
+      toast.error('Gender must be Male, Female, or Other');
+      return;
+    }
+    setWalkInLoading(true);
+    try {
+      // 1. Register patient
+      const patientRes = await api.post('/patients', {
+        full_name, date_of_birth, gender, phone,
+        address: address || 'Walk-in',
+        status: 'Active',
+      });
+      const patient = patientRes.data.patient || patientRes.data;
+
+      // 2. Create Pharmacy Only visit — goes straight to pharmacy queue
+      await api.post('/visits', {
+        patient_id: patient.id,
+        visit_date: new Date().toISOString().split('T')[0],
+        visit_type: 'Pharmacy Only',
+        reception_status: 'Completed',
+        reception_completed_at: new Date().toISOString(),
+        current_stage: 'pharmacy',
+        nurse_status: 'Not Required',
+        doctor_status: 'Not Required',
+        lab_status: 'Not Required',
+        pharmacy_status: 'Pending',
+        billing_status: 'Not Required',
+        overall_status: 'Active',
+        notes: 'Walk-in pharmacy patient registered by pharmacist',
+      });
+
+      toast.success(`${full_name} registered and added to pharmacy queue`);
+      setWalkInDialogOpen(false);
+      setWalkInForm({ full_name: '', date_of_birth: '', gender: '', phone: '', address: '' });
+      setWalkInMode('search');
+      setWalkInSearch('');
+      setWalkInSearchResults([]);
+      loadPharmacyData(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Registration failed');
+    } finally {
+      setWalkInLoading(false);
+    }
   };
 
   const handleRestoreStock = async (medicationName: string, quantity: number) => {
@@ -1562,11 +1664,23 @@ export default function PharmacyDashboard() {
             {/* Direct Pharmacy Queue */}
             <Card className="shadow-lg border-green-200 bg-green-50/30">
               <CardHeader className="bg-green-100/50">
-                <CardTitle className="flex items-center gap-2 text-green-800">
-                  <Users className="h-5 w-5" />
-                  Direct Pharmacy Queue ({directPharmacyQueue.length})
-                </CardTitle>
-                <CardDescription>Patients who came directly to pharmacy (no prescription needed)</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-green-800">
+                      <Users className="h-5 w-5" />
+                      Direct Pharmacy Queue ({directPharmacyQueue.length})
+                    </CardTitle>
+                    <CardDescription>Patients who came directly to pharmacy (no prescription needed)</CardDescription>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => setWalkInDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Register Walk-in Patient
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {directPharmacyQueue.length === 0 ? (
@@ -2031,6 +2145,122 @@ export default function PharmacyDashboard() {
             loading={loadingStates[selectedPrescriptionForDispense.id]}
           />
         )}
+
+        {/* Walk-in Patient Registration Dialog */}
+        <Dialog open={walkInDialogOpen} onOpenChange={(o) => {
+          if (!o) { setWalkInMode('search'); setWalkInSearch(''); setWalkInSearchResults([]); }
+          setWalkInDialogOpen(o);
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Walk-in Pharmacy Patient
+              </DialogTitle>
+              <DialogDescription>
+                Search for an existing patient or register a new one.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Mode toggle */}
+            <div className="flex gap-2 border rounded-lg p-1 bg-muted/40">
+              <button onClick={() => setWalkInMode('search')}
+                className={`flex-1 py-1.5 rounded text-sm font-medium transition-colors ${walkInMode === 'search' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                Search Existing
+              </button>
+              <button onClick={() => setWalkInMode('new')}
+                className={`flex-1 py-1.5 rounded text-sm font-medium transition-colors ${walkInMode === 'new' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                Register New
+              </button>
+            </div>
+
+            {walkInMode === 'search' ? (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Search by name or phone number</Label>
+                  <Input
+                    placeholder="e.g. John or 0712345678"
+                    value={walkInSearch}
+                    onChange={e => handleWalkInSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {walkInSearchLoading && (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                  {!walkInSearchLoading && walkInSearch && walkInSearchResults.length === 0 && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No patients found.{' '}
+                      <button className="text-blue-600 underline" onClick={() => setWalkInMode('new')}>
+                        Register new patient
+                      </button>
+                    </div>
+                  )}
+                  {walkInSearchResults.map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                      <div>
+                        <p className="font-medium text-sm">{p.full_name}</p>
+                        <p className="text-xs text-muted-foreground">{p.phone} · {p.gender}</p>
+                      </div>
+                      <Button size="sm" disabled={walkInLoading}
+                        onClick={() => handleServeExistingPatient(p)}
+                        className="bg-green-600 hover:bg-green-700 text-white">
+                        {walkInLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Add to Queue'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Full Name *</Label>
+                  <Input placeholder="e.g. John Doe" value={walkInForm.full_name}
+                    onChange={e => setWalkInForm(p => ({ ...p, full_name: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Date of Birth *</Label>
+                    <Input type="date" value={walkInForm.date_of_birth}
+                      onChange={e => setWalkInForm(p => ({ ...p, date_of_birth: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Gender *</Label>
+                    <Select value={walkInForm.gender} onValueChange={v => setWalkInForm(p => ({ ...p, gender: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Phone *</Label>
+                  <Input placeholder="e.g. 0712345678" value={walkInForm.phone}
+                    onChange={e => setWalkInForm(p => ({ ...p, phone: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Address</Label>
+                  <Input placeholder="Optional" value={walkInForm.address}
+                    onChange={e => setWalkInForm(p => ({ ...p, address: e.target.value }))} />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setWalkInDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleWalkInRegister} disabled={walkInLoading}
+                    className="bg-green-600 hover:bg-green-700">
+                    {walkInLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Register & Add to Queue
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Create Prescription Dialog */}
         <Dialog open={createPrescriptionDialogOpen} onOpenChange={setCreatePrescriptionDialogOpen}>

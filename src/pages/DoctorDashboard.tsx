@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatInTimeZone } from 'date-fns-tz';
 import { PatientMedicalHistory } from '@/components/PatientMedicalHistory';
+import { DoctorOrderSheet } from '@/components/DoctorOrderSheet';
 
 interface LabTestResult {
   id: string;
@@ -103,6 +104,7 @@ export default function DoctorDashboard() {
   const [showLabTestDialog, setShowLabTestDialog] = useState(false);
   const [showPrescriptionDialog, setShowPrescriptionDialog] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<any>(null);
+  const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [availableLabTests, setAvailableLabTests] = useState<any[]>([]);
   const [availableMedications, setAvailableMedications] = useState<any[]>([]);
   
@@ -3035,6 +3037,15 @@ export default function DoctorDashboard() {
                         {(visit.doctor_status === 'In Progress' || visit.doctor_status === 'In Consultation') && (
                           <>
                             <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => { setSelectedVisit(visit); setShowOrderSheet(true); }}
+                              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700"
+                            >
+                              <Stethoscope className="h-3 w-3" />
+                              Doctor's Orders
+                            </Button>
+                            <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleOrderLabTests(visit)}
@@ -4441,6 +4452,20 @@ export default function DoctorDashboard() {
         onOpenChange={setShowMedicalHistory}
         patient={selectedPatientForHistory}
       />
+
+      {/* Doctor's Order Sheet — multi-order panel */}
+      {selectedVisit && (
+        <DoctorOrderSheet
+          open={showOrderSheet}
+          onClose={() => setShowOrderSheet(false)}
+          visit={selectedVisit}
+          doctorId={user?.id || ''}
+          onOrdersSubmitted={(visitId) => {
+            setPendingVisits(prev => prev.filter(v => v.id !== visitId));
+            setShowOrderSheet(false);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
