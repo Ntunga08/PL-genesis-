@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle, Plus, Trash2, X, Package, Pill } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Plus, Trash2, X, Package, Pill, Printer } from 'lucide-react';
 
 interface DispenseDialogProps {
   open: boolean;
@@ -125,7 +125,77 @@ export function DispenseDialog({
     });
   };
 
-  return (
+  // Pull diagnosis from prescription or its linked visit (whichever has data)
+  const getDiagnosis = () =>
+    prescription?.diagnosis ||
+    prescription?.visit?.doctor_diagnosis ||
+    prescription?.visit?.provisional_diagnosis ||
+    prescription?.visit?.final_diagnosis ||
+    'Not recorded';
+
+  const getAge = () => {
+    if (!prescription?.patient?.date_of_birth) return 'N/A';
+    return `${new Date().getFullYear() - new Date(prescription.patient.date_of_birth).getFullYear()} yrs`;
+  };
+
+  const handlePrint = () => {
+    const p = prescription?.patient || {};
+    const doctor = prescription?.doctor || {};
+    const diagnosis = getDiagnosis();
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const medsRows = editableMedications.map((med: any, i: number) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${med.medication_name || med.original_medication_name || '—'}</strong><br/>
+          <small>${med.dispensed_dosage || med.dosage || ''}</small></td>
+        <td>${med.frequency || '—'}</td>
+        <td>${med.duration || '—'}</td>
+        <td>${med.dispensed_quantity || med.quantity || '—'}</td>
+        <td>${med.instructions || '—'}</td>
+      </tr>`).join('');
+
+    const html = `
+      <html><head><title>Prescription</title><style>
+        body{font-family:Arial,sans-serif;margin:24px;font-size:13px}
+        h2{text-align:center;margin-bottom:2px}
+        h4{text-align:center;color:#555;margin-top:0;margin-bottom:16px}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:16px;border:1px solid #ddd;padding:10px;border-radius:4px}
+        .info-grid div{font-size:12px} .info-grid span{color:#555}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;font-size:12px}
+        th{background:#f5f5f5;font-weight:bold}
+        .footer{margin-top:24px;display:flex;justify-content:space-between;font-size:11px;color:#666}
+        .sig{border-top:1px solid #333;width:160px;text-align:center;padding-top:4px;margin-top:32px}
+        @media print{body{margin:10px}}
+      </style></head><body>
+        <h2>PRESCRIPTION</h2>
+        <h4>Date: ${date}</h4>
+        <div class="info-grid">
+          <div><span>Patient Name:</span> <strong>${p.full_name || '—'}</strong></div>
+          <div><span>Age / Sex:</span> <strong>${getAge()} / ${p.gender || '—'}</strong></div>
+          <div><span>Phone:</span> ${p.phone || '—'}</div>
+          <div><span>Blood Group:</span> ${p.blood_group || '—'}</div>
+          ${p.allergies ? `<div class="col-span-2" style="color:#c00"><span>⚠ Allergies:</span> <strong>${p.allergies}</strong></div>` : ''}
+          <div style="grid-column:1/-1"><span>Diagnosis:</span> <strong>${diagnosis}</strong></div>
+          ${prescription?.notes ? `<div style="grid-column:1/-1"><span>Notes:</span> ${prescription.notes}</div>` : ''}
+        </div>
+        <table>
+          <thead><tr>
+            <th>#</th><th>Medication</th><th>Frequency</th><th>Duration</th><th>Qty</th><th>Instructions</th>
+          </tr></thead>
+          <tbody>${medsRows}</tbody>
+        </table>
+        <div class="footer">
+          <div>Prescribed by: <strong>${doctor?.name || doctor?.full_name || '—'}</strong></div>
+          <div class="sig">Pharmacist Signature</div>
+        </div>
+        <script>window.onload=()=>{window.print();}</script>
+      </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -175,12 +245,10 @@ export function DispenseDialog({
                   <span className="ml-2 font-medium">{prescription.patient.blood_group}</span>
                 </div>
               )}
-              {prescription?.provisional_diagnosis && (
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Diagnosis:</span>
-                  <span className="ml-2 font-medium">{prescription.provisional_diagnosis}</span>
-                </div>
-              )}
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Diagnosis:</span>
+                <span className="ml-2 font-medium">{getDiagnosis()}</span>
+              </div>
             </div>
           </div>
 
@@ -572,10 +640,11 @@ export function DispenseDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={handlePrint} type="button">
+              <Printer className="h-4 w-4 mr-2" />
+              Print Prescription
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading}>
               {loading ? 'Processing...' : 'Dispense All (TSh ' + totalCost.toLocaleString() + ')'}
             </Button>
           </div>

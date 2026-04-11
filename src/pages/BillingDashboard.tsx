@@ -331,8 +331,8 @@ export default function BillingDashboard() {
         paymentsRes,
         servicesRes
       ] = await Promise.all([
-        api.get('/visits?current_stage=billing&overall_status=Active').catch(() => ({ data: { visits: [] } })),
-        api.get('/visits?pharmacy_status=Completed&overall_status=Active').catch(() => ({ data: { visits: [] } })), // Also get pharmacy completed visits
+        api.get('/visits?current_stage=billing&overall_status=Active&limit=200').catch(() => ({ data: { visits: [] } })),
+        api.get('/visits?pharmacy_status=Completed&overall_status=Active&limit=200').catch(() => ({ data: { visits: [] } })), // Also get pharmacy completed visits
         api.get('/billing/invoices').catch(() => ({ data: { invoices: [] } })),
         api.get('/patients?status=Active').catch(() => ({ data: { patients: [] } })),
         api.get('/insurance/companies').catch(() => ({ data: { companies: [] } })),

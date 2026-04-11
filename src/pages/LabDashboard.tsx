@@ -200,28 +200,9 @@ export default function LabDashboard() {
         index === self.findIndex(t => t.id === test.id)
       ) || [];
 
-      // Filter to only show tests that are NOT completed or cancelled
-      // For patients returning to lab, only show tests ordered today or recently
-      const today = new Date().toISOString().split('T')[0];
+      // Show all pending/in-progress tests — patients from previous days must still be served
       const activeTests = uniqueTests.filter(t => {
-        // Always show non-completed tests
-        if (t.status === 'Completed' || t.status === 'Cancelled') {
-          return false;
-        }
-        
-        // For pending tests, only show if they were ordered today or recently
-        // This prevents showing old completed tests that were re-ordered
-        if (t.status === 'Pending' || t.status === 'Ordered') {
-          // Use created_at for accurate timestamp, fallback to test_date
-          const testDate = t.created_at || t.test_date;
-          if (testDate) {
-            const testDateOnly = new Date(testDate).toISOString().split('T')[0];
-            return testDateOnly === today;
-          }
-        }
-        
-        // Show all in-progress tests regardless of date
-        return true;
+        return t.status !== 'Completed' && t.status !== 'Cancelled';
       });
 
       // Calculate stats from ACTIVE tests (what's actually displayed)

@@ -155,20 +155,31 @@ export default function PharmacyDashboard() {
         medicationsRes,
         patientsRes,
         doctorsRes,
-        patientQueueRes
+        patientQueueRes,
+        multiOrderQueueRes
       ] = await Promise.allSettled([
-        api.get('/prescriptions?limit=100'),
+        api.get('/prescriptions?limit=200'),
         api.get('/pharmacy/medications'),
         api.get('/patients'),
         api.get('/users/profiles?role=doctor'),
-        api.get('/visits?current_stage=pharmacy&pharmacy_status=Pending&limit=50')
+        api.get('/visits?current_stage=pharmacy&pharmacy_status=Pending&limit=200&overall_status=Active'),
+        api.get('/visits?current_stage=multi_order&pharmacy_status=Pending&limit=200&overall_status=Active'),
       ]);
       
       const prescriptionsData = prescriptionsRes.status === 'fulfilled' ? (prescriptionsRes.value.data.prescriptions || []) : [];
       const medicationsData = medicationsRes.status === 'fulfilled' ? (medicationsRes.value.data.medications || []) : [];
       const patientsData = patientsRes.status === 'fulfilled' ? (patientsRes.value.data.patients || []) : [];
       const doctorsData = doctorsRes.status === 'fulfilled' ? (doctorsRes.value.data.profiles || []) : [];
-      const patientQueueData = patientQueueRes.status === 'fulfilled' ? (patientQueueRes.value.data.visits || []) : [];
+      const pharmacyVisits = patientQueueRes.status === 'fulfilled' ? (patientQueueRes.value.data.visits || []) : [];
+      const multiOrderVisits = multiOrderQueueRes.status === 'fulfilled' ? (multiOrderQueueRes.value.data.visits || []) : [];
+
+      // Merge and deduplicate
+      const seen = new Set();
+      const patientQueueData = [...pharmacyVisits, ...multiOrderVisits].filter(v => {
+        if (seen.has(v.id)) return false;
+        seen.add(v.id);
+        return true;
+      });
 
       // Combine the data manually
       // Note: medications array is already parsed from JSON by the backend
@@ -299,19 +310,26 @@ export default function PharmacyDashboard() {
 
   const handleOpenDispenseDialog = async (prescription: any) => {
     try {
-      // Fetch full prescription details with items
       const response = await api.get('/prescriptions/' + prescription.id);
       const fullPrescription = response.data.prescription;
-      
-      // Merge with existing prescription data (patient, doctor info)
+
+      // If visit_id exists but visit data is missing, fetch it
+      let visitData = fullPrescription.visit || null;
+      if (!visitData && fullPrescription.visit_id) {
+        try {
+          const visitRes = await api.get('/visits/' + fullPrescription.visit_id);
+          visitData = visitRes.data.visit || null;
+        } catch {}
+      }
+
       setSelectedPrescriptionForDispense({
         ...prescription,
         ...fullPrescription,
+        visit: visitData,
         items: fullPrescription.items || fullPrescription.medications || []
       });
       setDispenseDialogOpen(true);
     } catch (error) {
-
       toast.error('Failed to load prescription details');
     }
   };

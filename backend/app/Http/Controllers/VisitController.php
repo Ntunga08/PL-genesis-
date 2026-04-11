@@ -74,7 +74,7 @@ class VisitController extends Controller
         }
 
         $visits = $query->orderBy('visit_date', 'desc')
-                       ->paginate($request->get('limit', 50));
+                       ->paginate($request->get('limit', 200));
 
         return response()->json(['visits' => $visits->items(), 'total' => $visits->total()]);
     }
