@@ -2562,7 +2562,15 @@ export default function ReceptionistDashboard() {
                 </p>
                 {searchResults.map((patient) => (
                   <div key={patient.id} className="p-3 border-b last:border-b-0 hover:bg-gray-50">
-                    <div className="font-medium">{patient.full_name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{patient.full_name}</span>
+                      {(patient.insurance_provider || patient.insurance_number) && (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                          🛡 {patient.insurance_provider || 'Insurance'}
+                          {patient.insurance_number && ` · ${patient.insurance_number}`}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {patient.phone} • DOB: {format(new Date(patient.date_of_birth), 'MMM dd, yyyy')}
                     </div>
@@ -3030,7 +3038,15 @@ export default function ReceptionistDashboard() {
                     <div key={patient.id} className="p-4 hover:bg-muted/50 transition-colors">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="font-semibold text-lg">{patient.full_name}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-lg">{patient.full_name}</span>
+                            {(patient.insurance_provider || patient.insurance_number) && (
+                              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                                🛡 {patient.insurance_provider || 'Insurance'}
+                                {patient.insurance_number && ` · ${patient.insurance_number}`}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-sm text-muted-foreground mt-1 space-y-1">
                             <div>📞 {patient.phone}</div>
                             <div>🎂 DOB: {format(new Date(patient.date_of_birth), 'MMM dd, yyyy')} ({new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()} years)</div>

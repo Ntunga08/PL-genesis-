@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { formatInTimeZone } from 'date-fns-tz';
 import { PatientMedicalHistory } from '@/components/PatientMedicalHistory';
 import { DoctorOrderSheet } from '@/components/DoctorOrderSheet';
+import { ConsultationSheet } from '@/components/ConsultationSheet';
 
 interface LabTestResult {
   id: string;
@@ -105,6 +106,7 @@ export default function DoctorDashboard() {
   const [showPrescriptionDialog, setShowPrescriptionDialog] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<any>(null);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
+  const [showConsultationSheet, setShowConsultationSheet] = useState(false);
   const [availableLabTests, setAvailableLabTests] = useState<any[]>([]);
   const [availableMedications, setAvailableMedications] = useState<any[]>([]);
   
@@ -1061,58 +1063,21 @@ export default function DoctorDashboard() {
   // Handler for starting consultation
   const handleStartConsultation = async (visit: any) => {
     try {
-      // Show provisional diagnosis form immediately for better UX
       setSelectedVisit(visit);
-      setShowProvisionalDiagnosisForm(true);
-      toast.success('Consultation started - Complete provisional diagnosis');
+      setShowConsultationSheet(true);
 
-      // Update local state immediately for better UX
       const updateData: any = {
         doctor_status: 'In Progress',
         doctor_started_at: new Date().toISOString()
       };
-      
-      // If this patient came from lab, mark lab results as reviewed
       if (visit.lab_completed_at && !visit.lab_results_reviewed) {
         updateData.lab_results_reviewed = true;
         updateData.lab_results_reviewed_at = new Date().toISOString();
       }
-
-      // Update local state immediately
-      setPendingVisits(prev => prev.map(v => 
-        v.id === visit.id 
-          ? { ...v, ...updateData }
-          : v
-      ));
-      
-      // Try to update in background with shorter timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      try {
-        const response = await api.put(`/visits/${visit.id}`, updateData, {
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        if (response.status !== 200) {
-
-        }
-      } catch (apiError: any) {
-        clearTimeout(timeoutId);
-        if (apiError.name === 'AbortError') {
-
-        } else {
-
-        }
-      }
-      
-    } catch (error) {
-
-      // Still show the form even if everything fails
-      setSelectedVisit(visit);
-      setShowProvisionalDiagnosisForm(true);
-      toast.warning('Consultation started (offline mode)');
+      setPendingVisits(prev => prev.map(v => v.id === visit.id ? { ...v, ...updateData } : v));
+      await api.put(`/visits/${visit.id}`, updateData);
+    } catch (err) {
+      // visit status update failure is non-critical
     }
   };
 
@@ -2739,11 +2704,11 @@ export default function DoctorDashboard() {
                                 <Button
                                   variant="default"
                                   size="sm"
-                                  onClick={() => handleWritePrescription(visit)}
-                                  className="flex items-center gap-1"
+                                  onClick={() => handleStartConsultation(visit)}
+                                  className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
                                 >
-                                  <Pill className="h-3 w-3" />
-                                  Write Prescription
+                                  <Stethoscope className="h-3 w-3" />
+                                  Review & Consult
                                 </Button>
                               </div>
                             </TableCell>
@@ -2961,7 +2926,7 @@ export default function DoctorDashboard() {
                             <CheckCircle className="h-3 w-3" />
                             Complete Service
                           </Button>
-                        ) : hasLabResults && !visit.doctor_diagnosis && (visit.doctor_status === 'Pending Review' || visit.lab_completed_at) ? (
+                        ) : hasLabResults && (visit.doctor_status === 'Pending Review' || visit.lab_completed_at) ? (
                           <>
                             <Button
                               variant="outline"
@@ -2975,15 +2940,11 @@ export default function DoctorDashboard() {
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => {
-                                setAppointmentToComplete(visit);
-                                setCompletionNotes('');
-                                setShowCompleteDialog(true);
-                              }}
+                              onClick={() => handleStartConsultation(visit)}
                               className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
                             >
-                              <FileText className="h-3 w-3" />
-                              Write Prescription
+                              <Stethoscope className="h-3 w-3" />
+                              Review & Consult
                             </Button>
                           </>
                         ) : (!visit.doctor_diagnosis && visit.doctor_status !== 'In Progress' && visit.doctor_status !== 'In Consultation' && visit.doctor_status !== 'Pending Review') ? (
@@ -3000,14 +2961,11 @@ export default function DoctorDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setSelectedVisit(visit);
-                              setShowProvisionalDiagnosisForm(true);
-                            }}
+                            onClick={() => handleStartConsultation(visit)}
                             className="flex items-center gap-1"
                           >
-                            <FileText className="h-3 w-3" />
-                            Edit Diagnosis
+                            <Stethoscope className="h-3 w-3" />
+                            Continue Consultation
                           </Button>
                         ) : (visit.doctor_status === 'In Progress' || visit.doctor_status === 'In Consultation') ? (
                           <Button
@@ -3015,7 +2973,7 @@ export default function DoctorDashboard() {
                             size="sm"
                             onClick={() => {
                               setSelectedVisit(visit);
-                              setShowProvisionalDiagnosisForm(true);
+                              setShowConsultationSheet(true);
                             }}
                             className="flex items-center gap-1"
                           >
@@ -4463,6 +4421,21 @@ export default function DoctorDashboard() {
           onOrdersSubmitted={(visitId) => {
             setPendingVisits(prev => prev.filter(v => v.id !== visitId));
             setShowOrderSheet(false);
+          }}
+        />
+      )}
+
+      {/* Unified Consultation Sheet */}
+      {selectedVisit && (
+        <ConsultationSheet
+          open={showConsultationSheet}
+          onClose={() => setShowConsultationSheet(false)}
+          visit={selectedVisit}
+          doctorId={user?.id || ''}
+          onCompleted={(visitId) => {
+            setPendingVisits(prev => prev.filter(v => v.id !== visitId));
+            setShowConsultationSheet(false);
+            invalidateCache(`doctor_visits_${user?.id}`);
           }}
         />
       )}

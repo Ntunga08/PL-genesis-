@@ -11,6 +11,9 @@ return new class extends Migration
         Schema::table('medications', function (Blueprint $table) {
             $table->timestamp('stock_updated_at')->nullable()->after('initial_quantity');
         });
+
+        // Backfill existing records with created_at
+        DB::statement('UPDATE medications SET stock_updated_at = created_at WHERE stock_updated_at IS NULL');
     }
 
     public function down(): void

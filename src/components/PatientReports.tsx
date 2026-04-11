@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Search, Printer, Calendar as CalendarIcon, Loader2, FileText, User } from 'lucide-react';
+import { Search, Printer, Calendar as CalendarIcon, Loader2, FileText, User, Eye } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,7 @@ type Patient = {
 
 type PatientHistory = {
   appointments: any[];
+  visits: any[];
   prescriptions: any[];
   labTests: any[];
   invoices: any[];
@@ -44,6 +47,7 @@ export default function PatientReports() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [patientHistory, setPatientHistory] = useState<PatientHistory | null>(null);
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [showPreview, setShowPreview] = useState(false);
   const [systemSettings, setSystemSettings] = useState({
     hospital_name: 'Hospital Management System',
     hospital_address: '[Address to be configured]',
@@ -110,23 +114,12 @@ export default function PatientReports() {
       if (dateRange.to) params.to = dateRange.to.toISOString();
 
       // Fetch all patient data
-      const [appointmentsRes, prescriptionsRes, labTestsRes, invoicesRes] = await Promise.all([
-        api.get(`/appointments`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-
-          return { data: { appointments: [] } };
-        }),
-        api.get(`/prescriptions`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-
-          return { data: { prescriptions: [] } };
-        }),
-        api.get(`/labs`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-
-          return { data: { labTests: [] } };
-        }),
-        api.get(`/billing/invoices`, { params: { ...params, patient_id: patientId } }).catch((err) => {
-
-          return { data: { invoices: [] } };
-        })
+      const [appointmentsRes, prescriptionsRes, labTestsRes, invoicesRes, visitsRes] = await Promise.all([
+        api.get(`/appointments`, { params: { ...params, patient_id: patientId } }).catch(() => ({ data: { appointments: [] } })),
+        api.get(`/prescriptions`, { params: { ...params, patient_id: patientId } }).catch(() => ({ data: { prescriptions: [] } })),
+        api.get(`/labs`, { params: { ...params, patient_id: patientId } }).catch(() => ({ data: { labTests: [] } })),
+        api.get(`/billing/invoices`, { params: { ...params, patient_id: patientId } }).catch(() => ({ data: { invoices: [] } })),
+        api.get(`/visits`, { params: { ...params, patient_id: patientId } }).catch(() => ({ data: { visits: [] } })),
       ]);
 
       const invoices = invoicesRes.data.invoices || [];
@@ -143,25 +136,11 @@ export default function PatientReports() {
       const appointments = appointmentsRes.data.appointments || [];
       const prescriptions = prescriptionsRes.data.prescriptions || [];
       const labTests = labTestsRes.data.labTests || [];
-
-      // Log detailed prescription data
-      if (prescriptions.length > 0) {
-
-        prescriptions.forEach((rx, i) => {
-
-        });
-      }
-      
-      // Log detailed lab test data
-      if (labTests.length > 0) {
-
-        labTests.forEach((test, i) => {
-
-        });
-      }
+      const visits = visitsRes.data.visits || [];
 
       setPatientHistory({
         appointments,
+        visits,
         prescriptions,
         labTests,
         invoices,
@@ -843,10 +822,16 @@ export default function PatientReports() {
                     Patient ID: {selectedPatient.id}
                   </p>
                 </div>
-                <Button onClick={handlePrint} className="gap-2">
-                  <Printer className="h-4 w-4" />
-                  Print Report
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowPreview(true)} disabled={loadingHistory || !patientHistory} className="gap-2">
+                    <Eye className="h-4 w-4" />
+                    View Report
+                  </Button>
+                  <Button onClick={handlePrint} className="gap-2" disabled={loadingHistory || !patientHistory}>
+                    <Printer className="h-4 w-4" />
+                    Print Report
+                  </Button>
+                </div>
               </div>
 
               {/* Date Range Filter */}
@@ -954,6 +939,416 @@ export default function PatientReports() {
           )}
         </CardContent>
       </Card>
+
+      {/* Preview Dialog */}
+      {selectedPatient && patientHistory && (
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0 flex flex-row items-center justify-between">
+              <DialogTitle className="text-lg">
+                Report Preview — {selectedPatient.full_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+              </DialogTitle>
+              <Button onClick={() => { setShowPreview(false); handlePrint(); }} className="gap-2 mr-8">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+            </DialogHeader>
+            <ScrollArea className="flex-1 px-6 py-4">
+              <div className="space-y-6 text-sm">
+
+                {/* Patient Info */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-bold text-blue-900 mb-3 text-base">Patient Information</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><span className="text-muted-foreground">Name:</span> <strong>{selectedPatient.full_name}</strong></div>
+                    <div><span className="text-muted-foreground">Phone:</span> {selectedPatient.phone}</div>
+                    <div><span className="text-muted-foreground">Gender:</span> {selectedPatient.gender}</div>
+                    <div><span className="text-muted-foreground">DOB:</span> {selectedPatient.date_of_birth ? format(new Date(selectedPatient.date_of_birth), 'dd MMM yyyy') : 'N/A'} ({calculateAge(selectedPatient.date_of_birth)} yrs)</div>
+                    <div><span className="text-muted-foreground">Blood Group:</span> <strong className="text-red-600">{selectedPatient.blood_group || 'N/A'}</strong></div>
+                    <div><span className="text-muted-foreground">Registered:</span> {selectedPatient.created_at ? format(new Date(selectedPatient.created_at), 'dd MMM yyyy') : 'N/A'}</div>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Visits', value: patientHistory.visits?.length || 0 },
+                    { label: 'Prescriptions', value: patientHistory.prescriptions?.length || 0 },
+                    { label: 'Lab Tests', value: patientHistory.labTests?.length || 0 },
+                    { label: 'Total Spent', value: `TSh ${(patientHistory.totalSpent || 0).toLocaleString()}` },
+                  ].map(s => (
+                    <div key={s.label} className="border rounded-lg p-3 text-center">
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="font-bold text-lg">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Visit Journey Timeline */}
+                {patientHistory.visits?.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-blue-900 mb-3 border-b pb-1">Visit History & Clinical Journey</h3>
+                    <div className="space-y-5">
+                      {patientHistory.visits.map((v: any, i: number) => {
+                        // Enrich visit with linked data
+                        const visitPrescriptions = patientHistory.prescriptions.filter((rx: any) => rx.visit_id === v.id);
+                        const visitLabTests = patientHistory.labTests.filter((t: any) => t.visit_id === v.id);
+                        const visitInvoice = patientHistory.invoices.find((inv: any) => inv.visit_id === v.id);
+
+                        // Parse ICD-10 codes
+                        let icd10Codes: {code:string;description:string}[] = [];
+                        if (v.icd10_code) {
+                          try { icd10Codes = JSON.parse(v.icd10_code); } catch { icd10Codes = [{ code: v.icd10_code, description: v.icd10_description || '' }]; }
+                        }
+
+                        return (
+                          <div key={i} className="border rounded-lg overflow-hidden shadow-sm">
+
+                            {/* ── Visit Header ── */}
+                            <div className="bg-slate-700 text-white px-4 py-2.5 flex flex-wrap gap-3 items-center text-xs">
+                              <span className="font-bold text-sm">
+                                Visit #{patientHistory.visits.length - i}
+                              </span>
+                              <span className="text-slate-300">{v.created_at ? format(new Date(v.created_at), 'dd MMM yyyy, HH:mm') : 'N/A'}</span>
+                              {v.visit_type && <Badge variant="outline" className="text-[10px] border-slate-400 text-slate-200">{v.visit_type}</Badge>}
+                              <Badge className={`text-[10px] ml-auto ${v.overall_status === 'Completed' ? 'bg-green-600' : 'bg-yellow-600'}`}>
+                                {v.overall_status || 'Active'}
+                              </Badge>
+                            </div>
+
+                            <div className="divide-y">
+
+                              {/* ── Reception ── */}
+                              {v.reception_status && (
+                                <div className="px-4 py-3 flex items-start gap-3">
+                                  <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${v.reception_status === 'Completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                  <div className="flex-1 space-y-0.5 text-xs">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-slate-700">Reception</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${v.reception_status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{v.reception_status}</span>
+                                    </div>
+                                    {v.reception_completed_at && <p className="text-muted-foreground">Check-in: <strong>{format(new Date(v.reception_completed_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                    {v.visit_type && <p className="text-muted-foreground">Visit type: <strong>{v.visit_type}</strong></p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ── Nurse / Triage ── */}
+                              {v.nurse_status && (() => {
+                                let vitals: Record<string, any> = {};
+                                if (v.vital_signs && typeof v.vital_signs === 'object' && Object.keys(v.vital_signs).length > 0) {
+                                  vitals = v.vital_signs;
+                                } else if (v.nurse_notes && typeof v.nurse_notes === 'string' && v.nurse_notes.trim().startsWith('{')) {
+                                  try { vitals = JSON.parse(v.nurse_notes); } catch {}
+                                }
+                                const nurseNote = v.nurse_notes && typeof v.nurse_notes === 'string' && !v.nurse_notes.trim().startsWith('{') ? v.nurse_notes : null;
+                                return (
+                                  <div className="px-4 py-3 flex items-start gap-3">
+                                    <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${v.nurse_status === 'Completed' ? 'bg-green-500' : v.nurse_status === 'In Progress' ? 'bg-blue-500' : 'bg-orange-400'}`} />
+                                    <div className="flex-1 space-y-1 text-xs">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-semibold text-slate-700">Nurse / Triage</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${v.nurse_status === 'Completed' ? 'bg-green-100 text-green-700' : v.nurse_status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{v.nurse_status}</span>
+                                      </div>
+                                      {v.nurse_completed_at && <p className="text-muted-foreground">Completed: <strong>{format(new Date(v.nurse_completed_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                      {Object.keys(vitals).length > 0 ? (
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 mt-1">
+                                          {Object.entries(vitals).map(([k, val]) => (
+                                            <span key={k}><span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}:</span> <strong>{String(val)}</strong></span>
+                                          ))}
+                                        </div>
+                                      ) : <p className="text-muted-foreground italic">No vitals recorded</p>}
+                                      {nurseNote && <p className="text-muted-foreground italic">{nurseNote}</p>}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* ── Doctor ── */}
+                              {v.doctor_status && (
+                                <div className="px-4 py-3 flex items-start gap-3 bg-blue-50/30">
+                                  <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${v.doctor_status === 'Completed' ? 'bg-green-500' : v.doctor_status === 'In Progress' || v.doctor_status === 'In Consultation' ? 'bg-blue-500' : 'bg-orange-400'}`} />
+                                  <div className="flex-1 space-y-0.5 text-xs">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-slate-700">Doctor Consultation</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${v.doctor_status === 'Completed' ? 'bg-green-100 text-green-700' : v.doctor_status === 'In Progress' || v.doctor_status === 'In Consultation' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{v.doctor_status}</span>
+                                    </div>
+                                    {v.doctor_started_at && <p className="text-muted-foreground">Started: <strong>{format(new Date(v.doctor_started_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                    {v.doctor_completed_at && <p className="text-muted-foreground">Completed: <strong>{format(new Date(v.doctor_completed_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                    {v.chief_complaint && <p><span className="text-muted-foreground">Chief Complaint:</span> <strong>{v.chief_complaint}</strong></p>}
+                                    {(v.doctor_diagnosis || v.provisional_diagnosis) && <p><span className="text-muted-foreground">Diagnosis (Dx):</span> <strong className="text-blue-900">{v.doctor_diagnosis || v.provisional_diagnosis}</strong></p>}
+                                    {icd10Codes.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 items-center pt-0.5">
+                                        <span className="text-muted-foreground">ICD-10:</span>
+                                        {icd10Codes.map((c: any) => (
+                                          <span key={c.code} className="inline-flex items-center gap-1 bg-blue-100 border border-blue-300 rounded px-1.5 py-0.5 text-[10px]">
+                                            <span className="font-mono font-bold text-blue-800">{c.code}</span>
+                                            <span className="text-blue-700">{c.description}</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {v.doctor_notes && <p><span className="text-muted-foreground">Clinical Notes:</span> {v.doctor_notes}</p>}
+                                    {v.treatment_plan && <p><span className="text-muted-foreground">Treatment Plan (Tx):</span> {v.treatment_plan}</p>}
+                                    {!v.doctor_diagnosis && !v.provisional_diagnosis && !v.chief_complaint && !v.doctor_notes && <p className="text-muted-foreground italic">No consultation notes saved yet</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ── Lab ── */}
+                              {v.lab_status && v.lab_status !== 'Not Required' && (
+                                <div className="px-4 py-3 flex items-start gap-3">
+                                  <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${v.lab_status === 'Completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                  <div className="flex-1 space-y-1 text-xs">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-slate-700">Laboratory</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${v.lab_status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{v.lab_status}</span>
+                                    </div>
+                                    {v.lab_completed_at && <p className="text-muted-foreground">Completed: <strong>{format(new Date(v.lab_completed_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                    {visitLabTests.length > 0 ? (
+                                      <table className="w-full border-collapse mt-1">
+                                        <thead>
+                                          <tr className="bg-purple-50 text-purple-800">
+                                            <th className="text-left px-2 py-1 border border-purple-100">Test</th>
+                                            <th className="text-left px-2 py-1 border border-purple-100">Status</th>
+                                            <th className="text-left px-2 py-1 border border-purple-100">Result</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {visitLabTests.map((t: any, ti: number) => {
+                                            let resultText = t.result_value || '';
+                                            if (!resultText && t.results) {
+                                              try {
+                                                const parsed = typeof t.results === 'string' ? JSON.parse(t.results) : t.results;
+                                                if (parsed.results) resultText = Object.entries(parsed.results).map(([k, rv]: any) => `${k}: ${rv?.value ?? rv}${rv?.unit ? ' '+rv.unit : ''}`).join(', ');
+                                              } catch {}
+                                            }
+                                            if (!resultText && Array.isArray(t.lab_results)) {
+                                              resultText = t.lab_results.map((r: any) => `${r.result_value}${r.unit ? ' '+r.unit : ''}${r.abnormal_flag ? ' ⚠' : ''}`).join(', ');
+                                            }
+                                            return (
+                                              <tr key={ti} className={ti % 2 === 0 ? 'bg-white' : 'bg-purple-50/20'}>
+                                                <td className="px-2 py-1 border border-purple-100 font-medium">{t.test_name}</td>
+                                                <td className="px-2 py-1 border border-purple-100"><span className={`px-1 py-0.5 rounded text-[10px] ${t.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{t.status}</span></td>
+                                                <td className="px-2 py-1 border border-purple-100">{resultText || <span className="italic text-muted-foreground">Pending</span>}</td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    ) : <p className="text-muted-foreground italic">No tests linked to this visit</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ── Pharmacy ── */}
+                              {v.pharmacy_status && v.pharmacy_status !== 'Not Required' && (
+                                <div className="px-4 py-3 flex items-start gap-3 bg-orange-50/20">
+                                  <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${v.pharmacy_status === 'Completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                  <div className="flex-1 space-y-1 text-xs">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-slate-700">Pharmacy</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${v.pharmacy_status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{v.pharmacy_status}</span>
+                                    </div>
+                                    {v.pharmacy_completed_at && <p className="text-muted-foreground">Dispensed: <strong>{format(new Date(v.pharmacy_completed_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                    {visitPrescriptions.length > 0 ? visitPrescriptions.map((rx: any, ri: number) => (
+                                      <div key={ri} className="mt-1">
+                                        {rx.doctor?.full_name && <p className="text-muted-foreground mb-1">Prescribed by: <strong>Dr. {rx.doctor.full_name}</strong></p>}
+                                        <table className="w-full border-collapse">
+                                          <thead>
+                                            <tr className="bg-orange-50 text-orange-800">
+                                              <th className="text-left px-2 py-1 border border-orange-100">Medication</th>
+                                              <th className="text-left px-2 py-1 border border-orange-100">Dosage</th>
+                                              <th className="text-left px-2 py-1 border border-orange-100">Frequency</th>
+                                              <th className="text-left px-2 py-1 border border-orange-100">Duration</th>
+                                              <th className="text-center px-2 py-1 border border-orange-100">Qty</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {(rx.medications || rx.items || []).map((med: any, mi: number) => (
+                                              <tr key={mi} className={mi % 2 === 0 ? 'bg-white' : 'bg-orange-50/30'}>
+                                                <td className="px-2 py-1 border border-orange-100 font-medium">{med.medication_name || '—'}</td>
+                                                <td className="px-2 py-1 border border-orange-100">{med.dosage || '—'}</td>
+                                                <td className="px-2 py-1 border border-orange-100">{med.frequency || '—'}</td>
+                                                <td className="px-2 py-1 border border-orange-100">{med.duration || '—'}</td>
+                                                <td className="px-2 py-1 border border-orange-100 text-center font-bold">{med.quantity || '—'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )) : <p className="text-muted-foreground italic">No prescriptions linked to this visit</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ── Billing ── */}
+                              {v.billing_status && v.billing_status !== 'Not Required' && (
+                                <div className="px-4 py-3 flex items-start gap-3">
+                                  <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${v.billing_status === 'Completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                  <div className="flex-1 space-y-0.5 text-xs">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-slate-700">Billing</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${v.billing_status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{v.billing_status}</span>
+                                    </div>
+                                    {v.billing_completed_at && <p className="text-muted-foreground">Paid at: <strong>{format(new Date(v.billing_completed_at), 'dd MMM yyyy, HH:mm')}</strong></p>}
+                                    {visitInvoice ? (
+                                      <>
+                                        <p><span className="text-muted-foreground">Invoice #:</span> <span className="font-mono font-medium">{visitInvoice.invoice_number}</span></p>
+                                        <p><span className="text-muted-foreground">Total:</span> <strong>TSh {Number(visitInvoice.total_amount || 0).toLocaleString()}</strong></p>
+                                        <p><span className="text-muted-foreground">Paid:</span> <strong className="text-green-700">TSh {Number(visitInvoice.paid_amount || 0).toLocaleString()}</strong></p>
+                                        {Number(visitInvoice.total_amount) - Number(visitInvoice.paid_amount || 0) > 0 && (
+                                          <p><span className="text-muted-foreground">Balance:</span> <strong className="text-red-600">TSh {(Number(visitInvoice.total_amount) - Number(visitInvoice.paid_amount || 0)).toLocaleString()}</strong></p>
+                                        )}
+                                        <p><span className="text-muted-foreground">Status:</span> <span className={`font-medium ${visitInvoice.status === 'Paid' ? 'text-green-700' : 'text-red-600'}`}>{visitInvoice.status}</span></p>
+                                      </>
+                                    ) : <p className="text-muted-foreground italic">No invoice found for this visit</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ── Triage / Vitals (legacy fallback if no nurse_status) ── */}
+                              {!v.nurse_status && v.vital_signs && Object.keys(v.vital_signs).length > 0 && (
+                                <div className="px-4 py-3">
+                                  <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                    🩺 Triage / Vitals
+                                  </p>
+                                  <div className="grid grid-cols-3 gap-x-6 gap-y-1 text-xs">
+                                    {Object.entries(v.vital_signs).map(([k, val]) => (
+                                      <span key={k}>
+                                        <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}:</span>{' '}
+                                        <strong>{String(val)}</strong>
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {v.nurse_notes && typeof v.nurse_notes === 'string' && !v.nurse_notes.startsWith('{') && (
+                                    <p className="text-xs mt-2 text-muted-foreground italic">Nurse notes: {v.nurse_notes}</p>
+                                  )}
+                                </div>
+                              )}
+
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Prescriptions */}
+                {patientHistory.prescriptions?.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-blue-900 mb-2 border-b pb-1">Prescriptions & Medications</h3>
+                    {patientHistory.prescriptions.map((rx: any, i: number) => (
+                      <div key={i} className="mb-3 border rounded-lg overflow-hidden">
+                        <div className="bg-blue-50 px-3 py-2 text-xs flex gap-4">
+                          <span><strong>Date:</strong> {format(new Date(rx.prescription_date || rx.created_at), 'dd MMM yyyy')}</span>
+                          {rx.doctor?.full_name && <span><strong>Doctor:</strong> {rx.doctor.full_name}</span>}
+                          <span><strong>Status:</strong> <Badge variant={rx.status === 'Completed' ? 'default' : 'secondary'} className="text-[10px]">{rx.status}</Badge></span>
+                          {rx.diagnosis && <span><strong>Diagnosis:</strong> {rx.diagnosis}</span>}
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Medication</TableHead>
+                              <TableHead>Dosage</TableHead>
+                              <TableHead>Frequency</TableHead>
+                              <TableHead>Duration</TableHead>
+                              <TableHead>Qty</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(rx.medications || rx.items || []).map((med: any, j: number) => (
+                              <TableRow key={j}>
+                                <TableCell className="font-medium">{med.medication_name || '—'}</TableCell>
+                                <TableCell>{med.dosage || '—'}</TableCell>
+                                <TableCell>{med.frequency || '—'}</TableCell>
+                                <TableCell>{med.duration || '—'}</TableCell>
+                                <TableCell>{med.quantity || '—'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Lab Tests */}
+                {patientHistory.labTests?.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-blue-900 mb-2 border-b pb-1">Laboratory Tests</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Test Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Result</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientHistory.labTests.map((t: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell>{format(new Date(t.test_date || t.created_at), 'dd MMM yyyy')}</TableCell>
+                            <TableCell className="font-medium">{t.test_name}</TableCell>
+                            <TableCell>{t.test_type || '—'}</TableCell>
+                            <TableCell><Badge variant={t.status === 'Completed' ? 'default' : 'secondary'} className="text-[10px]">{t.status}</Badge></TableCell>
+                            <TableCell className="text-xs">{t.result_value || t.result || '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Billing */}
+                {patientHistory.invoices?.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-blue-900 mb-2 border-b pb-1">Billing Summary</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Paid</TableHead>
+                          <TableHead className="text-right">Balance</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientHistory.invoices.map((inv: any, i: number) => {
+                          const bal = Number(inv.total_amount) - Number(inv.paid_amount || 0);
+                          return (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs">{inv.invoice_number}</TableCell>
+                              <TableCell>{format(new Date(inv.invoice_date), 'dd MMM yyyy')}</TableCell>
+                              <TableCell className="text-right">TSh {Number(inv.total_amount).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-green-700">TSh {Number(inv.paid_amount || 0).toLocaleString()}</TableCell>
+                              <TableCell className={`text-right font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>TSh {bal.toLocaleString()}</TableCell>
+                              <TableCell><Badge variant={inv.status === 'Paid' ? 'default' : 'secondary'} className="text-[10px]">{inv.status}</Badge></TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell colSpan={2}>Total</TableCell>
+                          <TableCell className="text-right">TSh {patientHistory.invoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-green-700">TSh {patientHistory.totalSpent.toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-red-600">TSh {(patientHistory.invoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0) - patientHistory.totalSpent).toLocaleString()}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Print View */}
       {selectedPatient && patientHistory && (

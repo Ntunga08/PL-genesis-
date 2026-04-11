@@ -116,6 +116,10 @@ export default function PharmacyDashboard() {
   const [removedPrescriptionItems, setRemovedPrescriptionItems] = useState<Set<string>>(new Set()); // Track removed prescription items
   const [medicationSearchTerm, setMedicationSearchTerm] = useState('');
   const [inventorySearchTerm, setInventorySearchTerm] = useState('');
+  const [stockHistoryOpen, setStockHistoryOpen] = useState(false);
+  const [stockHistoryMed, setStockHistoryMed] = useState<any>(null);
+  const [stockHistoryLogs, setStockHistoryLogs] = useState<any[]>([]);
+  const [stockHistoryLoading, setStockHistoryLoading] = useState(false);
   const [newPrescriptionItems, setNewPrescriptionItems] = useState<any[]>([{
     medication_id: '',
     medication_name: '',
@@ -684,7 +688,10 @@ export default function PharmacyDashboard() {
         try {
           await api.put(`/pharmacy/medications/${medDetail.id}`, {
             stock_quantity: newStock,
-            quantity_in_stock: newStock // Send both for compatibility
+            quantity_in_stock: newStock,
+            _log_type: 'dispense',
+            _log_reference: prescriptionId,
+            _log_notes: `Dispensed for patient — Rx #${prescriptionId.substring(0,8)}`
           });
         } catch (error: any) {
 
@@ -843,6 +850,7 @@ export default function PharmacyDashboard() {
     const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
     const quantity = formData.get('quantity');
+    const stockNotes = formData.get('stockNotes') as string || '';
     const newQuantity = quantity ? Number(quantity) : 0;
     
     if (isNaN(newQuantity) || newQuantity < 0) {
@@ -857,6 +865,7 @@ export default function PharmacyDashboard() {
         stock_quantity: newQuantity,
         quantity_in_stock: newQuantity,
         ...(isRestock ? { initial_quantity: newQuantity } : {}),
+        _log_notes: stockNotes || (isRestock ? 'Manual restock' : 'Stock adjustment'),
       });
 
       const now = new Date().toISOString();
@@ -984,6 +993,20 @@ export default function PharmacyDashboard() {
   const openStockDialog = (medication: any) => {
     setSelectedMedication(medication);
     setStockDialogOpen(true);
+  };
+
+  const openStockHistory = async (medication: any) => {
+    setStockHistoryMed(medication);
+    setStockHistoryOpen(true);
+    setStockHistoryLoading(true);
+    try {
+      const { data } = await api.get(`/pharmacy/medications/${medication.id}/stock-history`);
+      setStockHistoryLogs(data.logs || []);
+    } catch {
+      toast.error('Failed to load stock history');
+    } finally {
+      setStockHistoryLoading(false);
+    }
   };
 
   const openEditDialog = (medication: any) => {
@@ -1852,7 +1875,11 @@ export default function PharmacyDashboard() {
                         return (
                           <TableRow key={med.id}>
                             <TableCell className="font-medium">{med.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{med.generic_name || 'Not specified'}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {med.generic_name?.trim()
+                                ? med.generic_name
+                                : <button onClick={() => openEditDialog(med)} className="text-xs text-blue-400 italic hover:text-blue-600 hover:underline">+ add generic name</button>}
+                            </TableCell>
                             <TableCell>{med.strength}</TableCell>
                             <TableCell className="text-muted-foreground">{med.dosage_form || 'Tablet'}</TableCell>
                             <TableCell className="font-semibold">
@@ -1868,7 +1895,9 @@ export default function PharmacyDashboard() {
                             <TableCell className="text-xs text-muted-foreground">
                               {med.stock_updated_at
                                 ? format(new Date(med.stock_updated_at), 'dd MMM yyyy')
-                                : '—'}
+                                : med.created_at
+                                  ? format(new Date(med.created_at), 'dd MMM yyyy')
+                                  : '—'}
                             </TableCell>
                             <TableCell>
                               <Badge variant={isLowStock ? 'destructive' : 'default'}>
@@ -1882,6 +1911,9 @@ export default function PharmacyDashboard() {
                                 </Button>
                                 <Button size="sm" onClick={() => openStockDialog(med)}>
                                   Update Stock
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => openStockHistory(med)} title="Stock history">
+                                  History
                                 </Button>
                                 <Button 
                                   size="sm" 
@@ -2144,8 +2176,72 @@ export default function PharmacyDashboard() {
                       />
                       <p className="text-xs text-muted-foreground">Setting a higher value will also update the uploaded quantity.</p>
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stockNotes">Notes (optional)</Label>
+                      <Input
+                        id="stockNotes"
+                        name="stockNotes"
+                        placeholder="e.g. Received from supplier, batch #123"
+                      />
+                    </div>
                     <Button type="submit" className="w-full">Update Stock</Button>
                   </form>
+                </DialogContent>
+              </Dialog>
+
+              {/* Stock History Dialog */}
+              <Dialog open={stockHistoryOpen} onOpenChange={setStockHistoryOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Stock History — {stockHistoryMed?.name}</DialogTitle>
+                    <DialogDescription>
+                      All stock changes for this medication
+                    </DialogDescription>
+                  </DialogHeader>
+                  {stockHistoryLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="text-right">Before</TableHead>
+                          <TableHead className="text-right">Change</TableHead>
+                          <TableHead className="text-right">After</TableHead>
+                          <TableHead>Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {stockHistoryLogs.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              No stock history yet. History is recorded from now on.
+                            </TableCell>
+                          </TableRow>
+                        ) : stockHistoryLogs.map((log: any) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="text-xs">
+                              {log.created_at ? format(new Date(log.created_at), 'dd MMM yyyy HH:mm') : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={log.type === 'restock' ? 'default' : log.type === 'dispense' ? 'secondary' : 'outline'}>
+                                {log.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{log.quantity_before}</TableCell>
+                            <TableCell className={`text-right font-semibold ${log.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {log.change > 0 ? `+${log.change}` : log.change}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">{log.quantity_after}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{log.notes || '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </DialogContent>
               </Dialog>
             </Card>

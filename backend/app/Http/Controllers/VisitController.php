@@ -11,7 +11,13 @@ class VisitController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PatientVisit::with(['patient', 'doctor', 'appointment']);
+        // Include prescriptions and labTests when fetching for a specific patient (for reports)
+        $eagerLoad = ['patient', 'doctor', 'appointment'];
+        if ($request->has('patient_id')) {
+            $eagerLoad[] = 'prescriptions.items';
+            $eagerLoad[] = 'labTests';
+        }
+        $query = PatientVisit::with($eagerLoad);
 
         // Basic filters
         if ($request->has('patient_id')) {

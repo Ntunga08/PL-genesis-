@@ -767,11 +767,30 @@ Route::middleware('auth:sanctum')->group(function () {
                 $validated['stock_updated_at'] = now();
             }
             
+            $oldQty = $medication->stock_quantity;
             $medication->update($validated);
-            
-            // Reload to get fresh data
             $medication->refresh();
-            
+
+            // Log stock change if quantity changed
+            $newQty = $medication->stock_quantity;
+            if ($newQty !== $oldQty) {
+                $change = $newQty - $oldQty;
+                $logType = $request->input('_log_type', $change > 0 ? 'restock' : 'dispense');
+                \DB::table('medication_stock_logs')->insert([
+                    'id' => \Illuminate\Support\Str::uuid(),
+                    'medication_id' => $medication->id,
+                    'quantity_before' => $oldQty,
+                    'quantity_after' => $newQty,
+                    'change' => $change,
+                    'type' => $logType,
+                    'reference' => $request->input('_log_reference'),
+                    'notes' => $request->input('_log_notes') ?: ($change > 0 ? 'Manual restock' : 'Stock adjustment'),
+                    'performed_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             return response()->json(['medication' => $medication]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
@@ -844,6 +863,16 @@ Route::middleware('auth:sanctum')->group(function () {
         }
     });
     
+    // Stock history for a medication
+    Route::get('/pharmacy/medications/{id}/stock-history', function(Request $request, $id) {
+        $logs = \DB::table('medication_stock_logs')
+            ->where('medication_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get();
+        return response()->json(['logs' => $logs]);
+    });
+
     Route::post('/pharmacy/medications/bulk', function(Request $request) {
         $request->validate([
             'medications' => 'required|array',

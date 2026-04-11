@@ -9,8 +9,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight, Save, FileText, History } from 'lucide-react';
-import { ICD10Search } from '@/components/ICD10Search';
+import { ICD10Search, ICD10Code } from '@/components/ICD10Search';
 import api from '@/lib/api';
+
+// Helper: parse icd10_code field (JSON array or legacy string) → ICD10Code[]
+function parseICD10(raw: string, descFallback = ''): ICD10Code[] {
+  if (!raw) return [];
+  try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed; } catch {}
+  return [{ code: raw, description: descFallback }];
+}
+// Helper: serialize ICD10Code[] → JSON string for storage
+function serializeICD10(codes: ICD10Code[]): string {
+  return codes.length ? JSON.stringify(codes) : '';
+}
 
 interface ProvisionalDiagnosisFormProps {
   open: boolean;
@@ -29,11 +40,11 @@ interface ProvisionalDiagnosisData {
   obstetric_history: string;
   developmental_milestones: string;
   provisional_diagnosis: string;
-  icd10_code: string;
-  icd10_description: string;
+  icd10_code: string;       // JSON array of {code,description}[]
+  icd10_description: string; // semicolon-joined descriptions (for display/legacy)
   investigation_plan: string;
   final_diagnosis: string;
-  final_icd10_code: string;
+  final_icd10_code: string;       // JSON array
   final_icd10_description: string;
   treatment_rx: string;
   other_management: string;
@@ -485,16 +496,12 @@ export function ProvisionalDiagnosisForm({
 
                     {/* ICD-10 for Provisional Diagnosis */}
                     <ICD10Search
-                      label="ICD-10 Code (Provisional)"
-                      selectedCode={formData.icd10_code}
-                      selectedDescription={formData.icd10_description}
-                      onSelect={(code, desc) => {
-                        handleInputChange('icd10_code', code);
-                        handleInputChange('icd10_description', desc);
-                      }}
-                      onClear={() => {
-                        handleInputChange('icd10_code', '');
-                        handleInputChange('icd10_description', '');
+                      multiple
+                      label="ICD-10 Codes (Provisional)"
+                      selectedCodes={parseICD10(formData.icd10_code, formData.icd10_description)}
+                      onSelect={(codes) => {
+                        handleInputChange('icd10_code', serializeICD10(codes));
+                        handleInputChange('icd10_description', codes.map(c => c.description).join('; '));
                       }}
                     />
 
@@ -530,16 +537,12 @@ export function ProvisionalDiagnosisForm({
 
                     {/* ICD-10 for Final Diagnosis */}
                     <ICD10Search
-                      label="ICD-10 Code (Final)"
-                      selectedCode={formData.final_icd10_code}
-                      selectedDescription={formData.final_icd10_description}
-                      onSelect={(code, desc) => {
-                        handleInputChange('final_icd10_code', code);
-                        handleInputChange('final_icd10_description', desc);
-                      }}
-                      onClear={() => {
-                        handleInputChange('final_icd10_code', '');
-                        handleInputChange('final_icd10_description', '');
+                      multiple
+                      label="ICD-10 Codes (Final)"
+                      selectedCodes={parseICD10(formData.final_icd10_code, formData.final_icd10_description)}
+                      onSelect={(codes) => {
+                        handleInputChange('final_icd10_code', serializeICD10(codes));
+                        handleInputChange('final_icd10_description', codes.map(c => c.description).join('; '));
                       }}
                     />
 

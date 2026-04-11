@@ -147,6 +147,8 @@ export default function BillingDashboard() {
   const [invoicePayments, setInvoicePayments] = useState<any[]>([]);
   const [patientReportDialogOpen, setPatientReportDialogOpen] = useState(false);
   const [selectedPatientForReport, setSelectedPatientForReport] = useState<any>(null);
+  const [reportPreviewData, setReportPreviewData] = useState<any>(null);
+  const [reportPreviewLoading, setReportPreviewLoading] = useState(false);
   const [invoiceSelectionDialogOpen, setInvoiceSelectionDialogOpen] = useState(false);
   const [selectedPatientForInvoiceSelection, setSelectedPatientForInvoiceSelection] = useState<any>(null);
   const [payAllDialogOpen, setPayAllDialogOpen] = useState(false);
@@ -3985,7 +3987,15 @@ export default function BillingDashboard() {
                         .filter((patientData) => patientData.status !== 'Paid' && patientData.patient) // Hide fully paid patients and null patients
                         .map((patientData) => (
                         <TableRow key={patientData.patient.id}>
-                          <TableCell className="font-medium">{patientData.patient?.full_name || 'Unknown Patient'}</TableCell>
+                          <TableCell className="font-medium">
+                            <div>{patientData.patient?.full_name || 'Unknown Patient'}</div>
+                            {(patientData.patient?.insurance_provider || patientData.patient?.insurance_number) && (
+                              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium mt-1">
+                                🛡 {patientData.patient?.insurance_provider || 'Insurance'}
+                                {patientData.patient?.insurance_number && ` · ${patientData.patient.insurance_number}`}
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-sm">{patientData.patient?.phone || 'N/A'}</TableCell>
                           <TableCell className="text-xs">
                             {(() => {
@@ -5340,7 +5350,23 @@ export default function BillingDashboard() {
                       className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
                         selectedPatientForReport?.id === patient.id ? 'bg-blue-50 border-blue-200' : ''
                       }`}
-                      onClick={() => setSelectedPatientForReport(patient)}
+                      onClick={async () => {
+                        setSelectedPatientForReport(patient);
+                        setReportPreviewData(null);
+                        setReportPreviewLoading(true);
+                        try {
+                          const [invRes, visitRes] = await Promise.allSettled([
+                            api.get(`/billing/invoices?patient_id=${patient.id}`),
+                            api.get(`/visits?patient_id=${patient.id}&limit=5`),
+                          ]);
+                          const invs = invRes.status === 'fulfilled' ? (invRes.value.data.invoices || []) : [];
+                          const visits = visitRes.status === 'fulfilled' ? (visitRes.value.data.visits || []) : [];
+                          const totalBilled = invs.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0);
+                          const totalPaid = invs.reduce((s: number, i: any) => s + Number(i.paid_amount || 0), 0);
+                          setReportPreviewData({ invoices: invs, visits, totalBilled, totalPaid, balance: totalBilled - totalPaid });
+                        } catch {}
+                        finally { setReportPreviewLoading(false); }
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -5384,13 +5410,55 @@ export default function BillingDashboard() {
               {/* Selected Patient Preview & Report Type Selection */}
               {selectedPatientForReport && (
                 <div className="space-y-4">
+                  {/* Preview Card */}
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2">Selected Patient</h4>
-                    <div className="text-sm text-blue-800">
-                      <p><strong>Name:</strong> {selectedPatientForReport.full_name}</p>
+                    <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                      Preview — {selectedPatientForReport.full_name}
+                      {reportPreviewLoading && <span className="text-xs text-blue-600 animate-pulse">Loading...</span>}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm text-blue-800 mb-3">
                       <p><strong>Phone:</strong> {selectedPatientForReport.phone}</p>
-                      <p><strong>Email:</strong> {selectedPatientForReport.email || 'N/A'}</p>
+                      <p><strong>Gender:</strong> {selectedPatientForReport.gender || 'N/A'}</p>
+                      <p><strong>DOB:</strong> {selectedPatientForReport.date_of_birth ? format(new Date(selectedPatientForReport.date_of_birth), 'dd MMM yyyy') : 'N/A'}</p>
+                      <p><strong>Blood Group:</strong> {selectedPatientForReport.blood_group || 'N/A'}</p>
+                      {selectedPatientForReport.insurance_provider && (
+                        <p className="col-span-2"><strong>Insurance:</strong> {selectedPatientForReport.insurance_provider} — {selectedPatientForReport.insurance_number}</p>
+                      )}
                     </div>
+                    {reportPreviewData && (
+                      <div className="border-t border-blue-200 pt-3 space-y-2">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-white rounded p-2">
+                            <p className="text-xs text-muted-foreground">Total Billed</p>
+                            <p className="font-bold text-sm">TSh {reportPreviewData.totalBilled.toLocaleString('en', {minimumFractionDigits:2})}</p>
+                          </div>
+                          <div className="bg-white rounded p-2">
+                            <p className="text-xs text-muted-foreground">Total Paid</p>
+                            <p className="font-bold text-sm text-green-700">TSh {reportPreviewData.totalPaid.toLocaleString('en', {minimumFractionDigits:2})}</p>
+                          </div>
+                          <div className="bg-white rounded p-2">
+                            <p className="text-xs text-muted-foreground">Balance</p>
+                            <p className={`font-bold text-sm ${reportPreviewData.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              TSh {reportPreviewData.balance.toLocaleString('en', {minimumFractionDigits:2})}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-blue-700">
+                          {reportPreviewData.invoices.length} invoice(s) · {reportPreviewData.visits.length} recent visit(s)
+                        </div>
+                        {reportPreviewData.visits.length > 0 && (
+                          <div className="text-xs space-y-1">
+                            <p className="font-medium text-blue-800">Recent Visits:</p>
+                            {reportPreviewData.visits.slice(0, 3).map((v: any) => (
+                              <div key={v.id} className="flex justify-between bg-white rounded px-2 py-1">
+                                <span>{v.visit_date ? format(new Date(v.visit_date), 'dd MMM yyyy') : '—'}</span>
+                                <span className="text-muted-foreground">{v.doctor_diagnosis || v.provisional_diagnosis || 'No diagnosis'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Report Type Selection */}
