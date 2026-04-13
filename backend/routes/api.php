@@ -663,6 +663,19 @@ Route::middleware('auth:sanctum')->group(function () {
         
         return response()->json(['claim' => $claim], 201);
     });
+
+    Route::put('/insurance/claims/{id}', function(Request $request, $id) {
+        $claim = \App\Models\InsuranceClaim::findOrFail($id);
+        $validated = $request->validate([
+            'status'          => 'sometimes|in:Pending,Approved,Rejected,Paid',
+            'approved_amount' => 'sometimes|nullable|numeric|min:0',
+            'approval_date'   => 'sometimes|nullable|date',
+            'payment_date'    => 'sometimes|nullable|date',
+            'notes'           => 'sometimes|nullable|string',
+        ]);
+        $claim->update($validated);
+        return response()->json(['claim' => $claim->load(['patient', 'insuranceCompany'])]);
+    });
     
     // Appointment Visits (from patient_visits table - for appointment-based workflow)
     Route::get('/appointment-visits', function(Request $request) {

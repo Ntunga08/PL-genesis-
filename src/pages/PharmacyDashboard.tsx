@@ -2565,7 +2565,7 @@ export default function PharmacyDashboard() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setNewPrescriptionItems([...newPrescriptionItems, {
+                    setNewPrescriptionItems([{
                       medication_id: '',
                       medication_name: '',
                       dosage: '',
@@ -2573,7 +2573,7 @@ export default function PharmacyDashboard() {
                       duration: '',
                       quantity: '',
                       instructions: ''
-                    }]);
+                    }, ...newPrescriptionItems]);
                   }}
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add Medication
@@ -2686,7 +2686,8 @@ export default function PharmacyDashboard() {
                           <div className="max-h-[300px] overflow-y-auto">
                             {medications
                               .filter(med => {
-                                if (!medicationSearchTerm) return true;
+                                if (!medicationSearchTerm) return false;
+                                if (medicationSearchTerm.length < 2) return false;
                                 const searchLower = medicationSearchTerm.toLowerCase();
                                 return (
                                   med.name.toLowerCase().includes(searchLower) ||
@@ -2764,7 +2765,8 @@ export default function PharmacyDashboard() {
                               })}
                             
                             {medications.filter(med => {
-                              if (!medicationSearchTerm) return true;
+                              if (!medicationSearchTerm) return false;
+                              if (medicationSearchTerm.length < 2) return false;
                               const searchLower = medicationSearchTerm.toLowerCase();
                               return (
                                 med.name.toLowerCase().includes(searchLower) ||
@@ -2772,7 +2774,7 @@ export default function PharmacyDashboard() {
                                 (med.strength && med.strength.toLowerCase().includes(searchLower)) ||
                                 (med.dosage_form && med.dosage_form.toLowerCase().includes(searchLower))
                               );
-                            }).length === 0 && medicationSearchTerm && (
+                            }).length === 0 && medicationSearchTerm && medicationSearchTerm.length >= 2 && (
                               <div className="p-6 text-center text-sm text-muted-foreground">
                                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                 <p className="font-medium">No medications found</p>
@@ -2786,17 +2788,11 @@ export default function PharmacyDashboard() {
                               </div>
                             )}
                             
-                            {!medicationSearchTerm && (
+                            {(!medicationSearchTerm || medicationSearchTerm.length < 2) && (
                               <div className="p-6 text-center text-sm text-muted-foreground">
                                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p className="font-medium">Search for medications</p>
-                                <p>Type in the search box above to find medications</p>
-                                <div className="text-xs mt-2 space-y-1">
-                                  <p>💡 <strong>Tips:</strong></p>
-                                  <p>• Search by name, generic name, or strength</p>
-                                  <p>• Medications in stock appear first</p>
-                                  <p>• Out of stock items are disabled</p>
-                                </div>
+                                <p className="font-medium">Type at least 2 characters to search</p>
+                                <p>Search by name, generic name, or strength</p>
                               </div>
                             )}
                           </div>
@@ -3084,7 +3080,13 @@ export default function PharmacyDashboard() {
                           doctor_id: user?.id,
                           visit_id: selectedPatientForPrescription.id,
                           prescription_date: new Date().toISOString().split('T')[0],
-                          diagnosis: 'Prescription queue',
+                          diagnosis: (() => {
+                            const v = selectedPatientForPrescription;
+                            const icd = v?.icd10_code || v?.icd10_description;
+                            const dx = v?.doctor_diagnosis || v?.provisional_diagnosis;
+                            if (icd && dx) return `${dx} [${icd}]`;
+                            return icd || dx || 'Pharmacy prescription';
+                          })(),
                           notes: 'Prescription created by pharmacy staff',
                           items: validItems.map(item => {
                             const med = medications.find(m => m.id === item.medication_id);

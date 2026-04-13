@@ -136,3 +136,4 @@ Upload the `dist/` folder to `public_html/`.
 - Insurance claims with NHIF Tanzania API integration
 - Admin reports and activity logs
 - Real-time updates via Socket.io
+

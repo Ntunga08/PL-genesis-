@@ -2894,6 +2894,26 @@ export default function BillingDashboard() {
     }
   };
 
+  const updateClaimStatus = async (claimId: string, newStatus: string, approvedAmount?: number) => {
+    try {
+      await api.put(`/insurance/claims/${claimId}`, {
+        status: newStatus,
+        approved_amount: approvedAmount ?? undefined,
+        approval_date: ['Approved', 'Paid'].includes(newStatus) ? new Date().toISOString().split('T')[0] : undefined,
+        payment_date: newStatus === 'Paid' ? new Date().toISOString().split('T')[0] : undefined,
+      });
+      setInsuranceClaims(prev => prev.map(c => c.id === claimId
+        ? { ...c, status: newStatus, approved_amount: approvedAmount ?? c.approved_amount,
+            approval_date: ['Approved','Paid'].includes(newStatus) ? new Date().toISOString() : c.approval_date,
+            payment_date: newStatus === 'Paid' ? new Date().toISOString() : c.payment_date }
+        : c
+      ));
+      toast.success(`Claim ${newStatus.toLowerCase()} successfully`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to update claim');
+    }
+  };
+
   const printInsuranceClaimsReport = () => {
     const printContent = `
       <html>
@@ -4377,13 +4397,6 @@ export default function BillingDashboard() {
                     <CardTitle>Insurance Claims</CardTitle>
                     <CardDescription>Submit and track NHIF claims</CardDescription>
                   </div>
-                  <div className="flex gap-2">
-
-                    <Button onClick={() => setClaimDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Submit New Claim
-                    </Button>
-                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -4408,11 +4421,13 @@ export default function BillingDashboard() {
                         <TableRow className="bg-gray-50">
                           <TableHead className="font-semibold">Claim Number</TableHead>
                           <TableHead className="font-semibold">Patient</TableHead>
-                          <TableHead className="font-semibold">NHIF Card</TableHead>
+                          <TableHead className="font-semibold">Insurance No.</TableHead>
+                          <TableHead className="font-semibold">Company</TableHead>
                           <TableHead className="font-semibold">Claim Amount</TableHead>
                           <TableHead className="font-semibold">Approved</TableHead>
                           <TableHead className="font-semibold">Status</TableHead>
                           <TableHead className="font-semibold">Submitted</TableHead>
+                          <TableHead className="font-semibold">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -4423,31 +4438,61 @@ export default function BillingDashboard() {
                               <div className="font-medium">{claim.patient?.full_name || 'Unknown'}</div>
                               <div className="text-xs text-muted-foreground">{claim.patient?.phone}</div>
                             </TableCell>
-                            <TableCell className="font-mono text-sm">{claim.patient?.insurance_policy_number || 'N/A'}</TableCell>
+                            <TableCell className="font-mono text-sm">{claim.patient?.insurance_number || '—'}</TableCell>
+                            <TableCell className="text-sm">{claim.insurance_company?.name || claim.insuranceCompany?.name || '—'}</TableCell>
                             <TableCell className="font-semibold">TSh {Number(claim.claim_amount as number).toLocaleString()}</TableCell>
                             <TableCell className="font-semibold text-green-600">
-                              TSh {Number(claim.approved_amount || 0).toLocaleString()}
+                              {claim.approved_amount ? `TSh ${Number(claim.approved_amount).toLocaleString()}` : '—'}
                             </TableCell>
                             <TableCell>
                               <Badge
                                 variant={
                                   claim.status === 'Approved' ? 'default' :
+                                  claim.status === 'Paid' ? 'default' :
                                   claim.status === 'Pending' ? 'secondary' :
                                   'destructive'
                                 }
                                 className={
-                                  claim.status === 'Approved' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                                  claim.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                                  'bg-red-100 text-red-800 hover:bg-red-200'
+                                  claim.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                                  claim.status === 'Paid' ? 'bg-blue-100 text-blue-800' :
+                                  claim.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
                                 }
                               >
                                 {claim.status}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-sm">
-                              <div>{format(new Date(claim.submission_date), 'MMM dd, yyyy')}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {format(new Date(claim.submission_date), 'h:mm a')}
+                              {claim.submission_date ? format(new Date(claim.submission_date), 'dd MMM yyyy') : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 flex-wrap">
+                                {claim.status === 'Pending' && (
+                                  <>
+                                    <Button size="sm" variant="outline"
+                                      className="text-green-700 border-green-300 hover:bg-green-50 h-7 text-xs"
+                                      onClick={() => updateClaimStatus(claim.id, 'Approved', Number(claim.claim_amount))}>
+                                      Approve
+                                    </Button>
+                                    <Button size="sm" variant="outline"
+                                      className="text-red-700 border-red-300 hover:bg-red-50 h-7 text-xs"
+                                      onClick={() => updateClaimStatus(claim.id, 'Rejected')}>
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                                {claim.status === 'Approved' && (
+                                  <Button size="sm" variant="outline"
+                                    className="text-blue-700 border-blue-300 hover:bg-blue-50 h-7 text-xs"
+                                    onClick={() => updateClaimStatus(claim.id, 'Paid', Number(claim.approved_amount || claim.claim_amount))}>
+                                    Mark Paid
+                                  </Button>
+                                )}
+                                {(claim.status === 'Rejected' || claim.status === 'Paid') && (
+                                  <span className="text-xs text-muted-foreground italic">
+                                    {claim.status === 'Paid' ? `Paid ${claim.payment_date ? format(new Date(claim.payment_date), 'dd MMM') : ''}` : 'Rejected'}
+                                  </span>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

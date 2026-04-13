@@ -1471,15 +1471,15 @@ export default function ReceptionistDashboard() {
       const patientId = patientRes.data.patient?.id;
       if (!patientId) throw new Error('Patient ID not returned');
 
-      // Create invoice marked as Insurance (no cash collected)
+      // Create invoice marked as Insurance (consultation fee covered by insurance)
       const invoiceRes = await api.post('/invoices', {
         patient_id: patientId,
         invoice_date: new Date().toISOString().split('T')[0],
         total_amount: consultationFee,
-        paid_amount: 0,
-        balance: consultationFee,
-        status: 'Pending',
-        notes: `Insurance Patient - ${registerForm.insurance_number || 'No insurance number'}`
+        paid_amount: consultationFee, // Marked as paid — covered by insurance
+        balance: 0,
+        status: 'Paid',
+        notes: `Insurance Patient - ${registerForm.insurance_number || 'No insurance number'} — Covered by ${insuranceCompanies.find(c => c.id === registerForm.insurance_company_id)?.name || 'Insurance'}`
       });
 
       const invoiceId = invoiceRes.data.invoice?.id;
@@ -2660,8 +2660,11 @@ export default function ReceptionistDashboard() {
               type="button"
               onClick={submitPatientRegistration}
               disabled={registerWithAppointment && (!appointmentDepartmentId || !appointmentDoctorId || !appointmentDate || !appointmentTime)}
+              className={registerForm.insurance_company_id ? 'bg-blue-600 hover:bg-blue-700' : ''}
             >
-              {registerWithAppointment ? 'Register & Schedule Appointment' : 'Register Patient'}
+              {registerForm.insurance_company_id
+                ? '🛡 Register (Insurance — Free)'
+                : registerWithAppointment ? 'Register & Schedule Appointment' : 'Register Patient'}
             </Button>
           </div>
         </DialogContent>

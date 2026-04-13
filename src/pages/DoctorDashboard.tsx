@@ -2998,61 +2998,18 @@ export default function DoctorDashboard() {
                           </Button>
                         ) : (
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            disabled
-                            className="flex items-center gap-1 opacity-50"
+                            onClick={() => handleStartConsultation(visit)}
+                            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700"
                           >
-                            <CheckCircle className="h-3 w-3" />
-                            Consultation Complete
+                            <Stethoscope className="h-3 w-3" />
+                            {visit.doctor_status === 'In Progress' || visit.doctor_status === 'In Consultation'
+                              ? 'Open Consultation'
+                              : visit.doctor_diagnosis || visit.provisional_diagnosis
+                              ? 'Continue Consultation'
+                              : 'Start Consultation'}
                           </Button>
-                        )}
-                        {/* Actions for ongoing consultations */}
-                        {(visit.doctor_status === 'In Progress' || visit.doctor_status === 'In Consultation') && (
-                          <>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => { setSelectedVisit(visit); setShowOrderSheet(true); }}
-                              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700"
-                            >
-                              <Stethoscope className="h-3 w-3" />
-                              Doctor's Orders
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOrderLabTests(visit)}
-                              className="flex items-center gap-1"
-                            >
-                              <TestTube className="h-3 w-3" />
-                              Order Lab Test
-                            </Button>
-                            {hasLabResults && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOrderLabTests(visit)}
-                                className="flex items-center gap-1 border-orange-300 text-orange-700 hover:bg-orange-50"
-                              >
-                                <TestTube className="h-3 w-3" />
-                                Return to Lab
-                              </Button>
-                            )}
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => {
-                                setAppointmentToComplete(visit);
-                                setCompletionNotes('');
-                                setShowCompleteDialog(true);
-                              }}
-                              className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-3 w-3" />
-                              Complete
-                            </Button>
-                          </>
                         )}
                       </div>
                     </TableCell>
