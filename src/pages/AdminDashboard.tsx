@@ -34,7 +34,9 @@ import {
   CheckCircle,
   Stethoscope as StethoscopeIcon,
   FileText as FileTextIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -1022,6 +1024,9 @@ export default function AdminDashboard() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [lowStockOpen, setLowStockOpen] = useState(false);
+  const [userMgmtOpen, setUserMgmtOpen] = useState(true);
+  const [activityLogsOpen, setActivityLogsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAction, setSelectedAction] = useState('all');
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>('all');
@@ -1492,8 +1497,13 @@ export default function AdminDashboard() {
       const patientsData = patientsResponse.patients || [];
 
       // Fetch users with their roles from MySQL API
-      const { data: usersResponse } = await api.get('/users');
-      const usersData = usersResponse.users || [];
+      let usersData: any[] = [];
+      try {
+        const { data: usersResponse } = await api.get('/users');
+        usersData = usersResponse.users || [];
+      } catch (error) {
+        // non-critical — don't crash the whole dashboard
+      }
 
       // Users from API already include roles
       const usersWithRoles = usersData.map((user: any) => ({
@@ -2157,7 +2167,28 @@ export default function AdminDashboard() {
 
         {/* Low Stock Inventory Report */}
         <div className="no-print">
-          <LowStockInventoryReport />
+          <Card className="shadow-lg border-orange-200">
+            <CardHeader
+              className="cursor-pointer select-none hover:bg-orange-50/50 transition-colors rounded-t-lg"
+              onClick={() => setLowStockOpen(o => !o)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-orange-700">
+                    <AlertTriangle className="h-5 w-5" />
+                    Low Stock Inventory
+                  </CardTitle>
+                  <CardDescription>Medications and supplies running low</CardDescription>
+                </div>
+                {lowStockOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+              </div>
+            </CardHeader>
+            {lowStockOpen && (
+              <CardContent className="pt-0">
+                <LowStockInventoryReport />
+              </CardContent>
+            )}
+          </Card>
         </div>
 
         {/* System Settings Card */}
@@ -2218,7 +2249,10 @@ export default function AdminDashboard() {
         </Card>
 
         <Card className="shadow-lg">
-          <CardHeader>
+          <CardHeader
+            className="cursor-pointer select-none hover:bg-gray-50 transition-colors rounded-t-lg"
+            onClick={() => setUserMgmtOpen(o => !o)}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -2227,12 +2261,16 @@ export default function AdminDashboard() {
                 </CardTitle>
                 <CardDescription>Manage users and roles</CardDescription>
               </div>
-              <Button onClick={() => setShowCreateUserDialog(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Create User
-              </Button>
+              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                <Button onClick={() => setShowCreateUserDialog(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Create User
+                </Button>
+                {userMgmtOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+              </div>
             </div>
           </CardHeader>
+          {userMgmtOpen && (
           <CardContent>
             {users.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -2307,6 +2345,7 @@ export default function AdminDashboard() {
               </div>
             )}
           </CardContent>
+          )}
         </Card>
 
         {/* Create User Dialog */}
@@ -2430,7 +2469,28 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
-        <ActivityLogsView />
+        <Card className="shadow-lg">
+          <CardHeader
+            className="cursor-pointer select-none hover:bg-gray-50 transition-colors rounded-t-lg"
+            onClick={() => setActivityLogsOpen(o => !o)}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Activity Logs
+                </CardTitle>
+                <CardDescription>System activity and audit trail</CardDescription>
+              </div>
+              {activityLogsOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+            </div>
+          </CardHeader>
+          {activityLogsOpen && (
+            <CardContent className="pt-0">
+              <ActivityLogsView />
+            </CardContent>
+          )}
+        </Card>
 
         {/* Billing Analysis */}
         <Card className="shadow-lg border-green-200">

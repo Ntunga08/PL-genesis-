@@ -87,17 +87,27 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        $user = $request->user();
-        
-        return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'phone' => $user->phone,
-                'is_active' => $user->is_active,
-            ]
-        ]);
+        try {
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+
+            return response()->json([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'full_name' => $user->full_name ?? $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'phone' => $user->phone,
+                    'is_active' => $user->is_active,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Auth me error: ' . $e->getMessage());
+            return response()->json(['error' => 'Authentication error: ' . $e->getMessage()], 500);
+        }
     }
 }

@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { FlaskConical, Pill, Syringe, CheckCircle, X, Loader2, Send, Save, AlertTriangle, Stethoscope } from "lucide-react";
+import { FlaskConical, Pill, Syringe, CheckCircle, X, Loader2, Send, Save, AlertTriangle, Stethoscope, History, ChevronDown, ChevronUp } from "lucide-react";
 import { ICD10Search } from "@/components/ICD10Search";
+import { PatientMedicalHistory } from "@/components/PatientMedicalHistory";
 
 interface Props {
   open: boolean;
@@ -32,6 +33,10 @@ interface ProcOrder {
 export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyData, setHistoryData] = useState<{ visits: any[]; prescriptions: any[]; labTests: any[] } | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [diagnosis, setDiagnosis] = useState("");
   const [icd10Codes, setIcd10Codes] = useState<{code:string;description:string}[]>([]);
   const [chiefComplaint, setChiefComplaint] = useState("");
@@ -80,6 +85,24 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
       ["Procedure","Vaccination","Diagnostic","Nursing"].includes(x.service_type)));
   };
 
+  const loadHistory = async () => {
+    if (!visit?.patient_id || historyData) return;
+    setHistoryLoading(true);
+    try {
+      const [visitsRes, labsRes, rxRes] = await Promise.allSettled([
+        api.get(`/visits?patient_id=${visit.patient_id}&limit=10`),
+        api.get(`/labs?patient_id=${visit.patient_id}&limit=20`),
+        api.get(`/prescriptions?patient_id=${visit.patient_id}&limit=20`),
+      ]);
+      setHistoryData({
+        visits: visitsRes.status === "fulfilled" ? (visitsRes.value.data.visits || []).filter((v: any) => v.id !== visit.id) : [],
+        labTests: labsRes.status === "fulfilled" ? (labsRes.value.data.labTests || []) : [],
+        prescriptions: rxRes.status === "fulfilled" ? (rxRes.value.data.prescriptions || []) : [],
+      });
+    } catch { /* silent */ }
+    finally { setHistoryLoading(false); }
+  };
+
   const toggleLab = (t: any) => setLabOrders(p => p.find(o => o.testId === t.id)
     ? p.filter(o => o.testId !== t.id)
     : [...p, { testId: t.id, testName: t.service_name || t.test_name, testType: t.service_type || "Laboratory", priority: labPriority }]);
@@ -99,6 +122,7 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
     setDiagnosis(""); setIcd10Codes([]); setChiefComplaint(""); setNotes(""); setTreatmentPlan("");
     setLabOrders([]); setMedOrders([]); setProcOrders([]);
     setLabSearch(""); setMedSearch(""); setSvcSearch(""); setLabNotes("");
+    setHistoryExpanded(false); setHistoryData(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -340,9 +364,14 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
             {Object.keys(vitals).length > 0 && (
               <div>
                 <p className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Vitals</p>
-                {Object.entries(vitals).map(([k, v]) => (
-                  <p key={k}><span className="text-muted-foreground capitalize">{k.replace(/_/g," ")}:</span> {String(v)}</p>
-                ))}
+                {Object.entries(vitals)
+                  .filter(([k]) => !k.endsWith('_unit') && vitals[k] !== '' && vitals[k] != null)
+                  .map(([k, v]) => (
+                    <div key={k} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</span>
+                      <span className="font-medium">{String(v)}{vitals[k + '_unit'] ? ` ${vitals[k + '_unit']}` : ''}</span>
+                    </div>
+                  ))}
               </div>
             )}
             {visit?.chief_complaint && (
@@ -353,8 +382,37 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
             )}
             {visit?.nurse_notes && (
               <div>
-                <p className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Nurse Notes</p>
-                <p className="text-muted-foreground">{visit.nurse_notes}</p>
+                <p className="font-semibold text-gray-500 uppercase tracking-wide mb-1">Vitals & Nurse Notes</p>
+                {(() => {
+                  try {
+                    const raw = visit.nurse_notes;
+                    const n = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    const vitalRows = [
+                      { label: 'Blood Pressure', value: n.blood_pressure, unit: 'mmHg' },
+                      { label: 'Heart Rate',     value: n.heart_rate,     unit: 'bpm' },
+                      { label: 'Temperature',    value: n.temperature,    unit: '°C' },
+                      { label: 'SpO₂',           value: n.oxygen_saturation, unit: '%' },
+                      { label: 'Weight',         value: n.weight,         unit: n.weight_unit || 'kg' },
+                      { label: 'Height',         value: n.height,         unit: n.height_unit || 'cm' },
+                      { label: 'MUAC',           value: n.muac,           unit: n.muac_unit || 'cm' },
+                    ].filter(r => r.value && String(r.value).trim() !== '');
+                    return (
+                      <div className="space-y-1">
+                        {vitalRows.map(r => (
+                          <div key={r.label} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">{r.label}</span>
+                            <span className="font-medium">{r.value} <span className="text-muted-foreground">{r.unit}</span></span>
+                          </div>
+                        ))}
+                        {n.notes && n.notes.trim() && (
+                          <p className="text-xs text-muted-foreground mt-1 italic border-t pt-1">{n.notes}</p>
+                        )}
+                      </div>
+                    );
+                  } catch {
+                    return <p className="text-xs text-muted-foreground">{visit.nurse_notes}</p>;
+                  }
+                })()}
               </div>
             )}
             {/* Lab Results — shown when results are back */}
@@ -400,6 +458,98 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
 
           <ScrollArea className="flex-1">
             <div className="p-5 space-y-5">
+
+              {/* ── 0. Patient History ── */}
+              <div className="border rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-purple-50 hover:bg-purple-100 transition-colors text-left"
+                  onClick={() => { setHistoryExpanded(p => !p); if (!historyExpanded) loadHistory(); }}
+                >
+                  <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide flex items-center gap-1">
+                    <History className="h-3 w-3" /> Patient History
+                  </span>
+                  {historyExpanded ? <ChevronUp className="h-3 w-3 text-purple-500" /> : <ChevronDown className="h-3 w-3 text-purple-500" />}
+                </button>
+
+                {historyExpanded && (
+                  <div className="p-3 space-y-3 bg-white text-xs">
+                    {historyLoading ? (
+                      <div className="flex items-center justify-center py-4 gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading history...
+                      </div>
+                    ) : !historyData || (historyData.visits.length === 0 && historyData.labTests.length === 0 && historyData.prescriptions.length === 0) ? (
+                      <p className="text-center text-muted-foreground py-3">No previous history found</p>
+                    ) : (
+                      <>
+                        {/* Past Visits */}
+                        {historyData.visits.length > 0 && (
+                          <div>
+                            <p className="font-semibold text-gray-600 mb-1.5">Past Visits ({historyData.visits.length})</p>
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                              {historyData.visits.map((v: any) => (
+                                <div key={v.id} className="border rounded p-2 bg-gray-50">
+                                  <div className="flex justify-between items-start">
+                                    <span className="font-medium text-gray-700">
+                                      {v.visit_date ? new Date(v.visit_date).toLocaleDateString() : 'N/A'}
+                                    </span>
+                                    <Badge variant="outline" className="text-[10px] h-4 px-1">{v.overall_status || v.status}</Badge>
+                                  </div>
+                                  {(v.doctor_diagnosis || v.provisional_diagnosis) && (
+                                    <p className="text-muted-foreground mt-0.5">Dx: {v.doctor_diagnosis || v.provisional_diagnosis}</p>
+                                  )}
+                                  {v.doctor_notes && <p className="text-muted-foreground italic truncate">{v.doctor_notes}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Past Lab Tests */}
+                        {historyData.labTests.length > 0 && (
+                          <div>
+                            <p className="font-semibold text-gray-600 mb-1.5">Past Lab Tests ({historyData.labTests.length})</p>
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {historyData.labTests.map((t: any) => (
+                                <div key={t.id} className="flex justify-between items-center border rounded p-1.5 bg-gray-50">
+                                  <span className="font-medium">{t.test_name}</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground">{t.test_date ? new Date(t.test_date).toLocaleDateString() : ''}</span>
+                                    <Badge variant={t.status === 'Completed' ? 'default' : 'secondary'} className="text-[10px] h-4 px-1">{t.status}</Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Past Prescriptions */}
+                        {historyData.prescriptions.length > 0 && (
+                          <div>
+                            <p className="font-semibold text-gray-600 mb-1.5">Past Prescriptions ({historyData.prescriptions.length})</p>
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {historyData.prescriptions.map((rx: any) => (
+                                <div key={rx.id} className="border rounded p-1.5 bg-gray-50">
+                                  <div className="flex justify-between">
+                                    <span className="font-medium">{rx.diagnosis || 'Prescription'}</span>
+                                    <span className="text-muted-foreground">{rx.prescription_date ? new Date(rx.prescription_date).toLocaleDateString() : ''}</span>
+                                  </div>
+                                  {(rx.items || []).slice(0, 3).map((item: any, i: number) => (
+                                    <p key={i} className="text-muted-foreground">• {item.medication_name} {item.dosage} × {item.frequency}</p>
+                                  ))}
+                                  {(rx.items || []).length > 3 && <p className="text-muted-foreground italic">+{rx.items.length - 3} more</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t" />
 
               {/* ── 1. Clinical Notes ── */}
               <div className="space-y-3">
@@ -450,7 +600,11 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto">
-                  {labTests.filter(t => (t.service_name || t.test_name || "").toLowerCase().includes(labSearch.toLowerCase())).map(t => {
+                  {labSearch.trim() === "" ? (
+                    <p className="col-span-2 text-xs text-muted-foreground text-center py-4">Type to search lab tests...</p>
+                  ) : labTests.filter(t => (t.service_name || t.test_name || "").toLowerCase().includes(labSearch.toLowerCase())).length === 0 ? (
+                    <p className="col-span-2 text-xs text-muted-foreground text-center py-4">No tests found</p>
+                  ) : labTests.filter(t => (t.service_name || t.test_name || "").toLowerCase().includes(labSearch.toLowerCase())).map(t => {
                     const sel = labOrders.some(o => o.testId === t.id);
                     return (
                       <button key={t.id} onClick={() => toggleLab(t)}
@@ -495,7 +649,11 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
                 </p>
                 <Input placeholder="Search medications..." value={medSearch} onChange={e => setMedSearch(e.target.value)} />
                 <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto">
-                  {meds.filter(m => m.name.toLowerCase().includes(medSearch.toLowerCase()) || (m.generic_name || "").toLowerCase().includes(medSearch.toLowerCase())).map(m => {
+                  {medSearch.trim() === "" ? (
+                    <p className="col-span-2 text-xs text-muted-foreground text-center py-4">Type to search medications...</p>
+                  ) : meds.filter(m => m.name.toLowerCase().includes(medSearch.toLowerCase()) || (m.generic_name || "").toLowerCase().includes(medSearch.toLowerCase())).length === 0 ? (
+                    <p className="col-span-2 text-xs text-muted-foreground text-center py-4">No medications found</p>
+                  ) : meds.filter(m => m.name.toLowerCase().includes(medSearch.toLowerCase()) || (m.generic_name || "").toLowerCase().includes(medSearch.toLowerCase())).map(m => {
                     const stock = m.stock_quantity || 0;
                     const sel = medOrders.some(o => o.medicationId === m.id);
                     return (
@@ -555,7 +713,11 @@ export function ConsultationSheet({ open, onClose, visit, doctorId, onCompleted 
                 </p>
                 <Input placeholder="Search procedures, vaccinations..." value={svcSearch} onChange={e => setSvcSearch(e.target.value)} />
                 <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto">
-                  {services.filter(s => s.service_name.toLowerCase().includes(svcSearch.toLowerCase())).map(s => {
+                  {svcSearch.trim() === "" ? (
+                    <p className="col-span-2 text-xs text-muted-foreground text-center py-4">Type to search procedures...</p>
+                  ) : services.filter(s => s.service_name.toLowerCase().includes(svcSearch.toLowerCase())).length === 0 ? (
+                    <p className="col-span-2 text-xs text-muted-foreground text-center py-4">No procedures found</p>
+                  ) : services.filter(s => s.service_name.toLowerCase().includes(svcSearch.toLowerCase())).map(s => {
                     const sel = procOrders.some(o => o.serviceId === s.id);
                     return (
                       <button key={s.id} onClick={() => toggleSvc(s)}

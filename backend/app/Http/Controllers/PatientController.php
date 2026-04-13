@@ -10,19 +10,28 @@ class PatientController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Patient::query();
+        $query = Patient::with(['insuranceCompany']);
 
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('insurance_number', 'like', "%{$search}%");
             });
         }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->has('has_insurance')) {
+            $query->whereNotNull('insurance_company_id');
+        }
+
+        if ($request->has('insurance_company_id')) {
+            $query->where('insurance_company_id', $request->insurance_company_id);
         }
 
         // Date range filtering for reports
@@ -59,6 +68,8 @@ class PatientController extends Controller
             'medical_history' => 'nullable|string',
             'insurance_provider' => 'nullable|string',
             'insurance_number' => 'nullable|string|max:100',
+            'insurance_company_id' => 'nullable|uuid|exists:insurance_companies,id',
+            'status' => 'nullable|string|max:50',
         ]);
 
         $validated['id'] = (string) Str::uuid();
@@ -85,6 +96,7 @@ class PatientController extends Controller
             'medical_history' => 'nullable|string',
             'insurance_provider' => 'nullable|string',
             'insurance_number' => 'nullable|string|max:100',
+            'insurance_company_id' => 'nullable|uuid|exists:insurance_companies,id',
             'status' => 'sometimes|in:Active,Inactive',
         ]);
 

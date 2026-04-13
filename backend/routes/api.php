@@ -267,6 +267,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Patient Services (alias for services/assign for backward compatibility)
     Route::post('/patient-services', [ServiceController::class, 'assignToPatient']);
     Route::get('/patient-services', [ServiceController::class, 'getAllPatientServices']);
+    Route::put('/patient-services/{id}', [ServiceController::class, 'updatePatientService']);
     
     // Service Forms
     Route::post('/service-forms', function(Request $request) {
@@ -615,10 +616,14 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Insurance Claims
     Route::get('/insurance/claims', function(Request $request) {
-        $query = \App\Models\InsuranceClaim::with(['invoice', 'insuranceCompany']);
+        $query = \App\Models\InsuranceClaim::with(['invoice', 'insuranceCompany', 'patient']);
         
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->has('patient_id')) {
+            $query->where('patient_id', $request->patient_id);
         }
         
         $claims = $query->orderBy('created_at', 'desc')->get();
@@ -631,19 +636,29 @@ Route::middleware('auth:sanctum')->group(function () {
             'insurance_company_id' => 'required|exists:insurance_companies,id',
             'claim_amount' => 'required|numeric|min:0',
             'claim_number' => 'nullable|string',
+            'patient_id' => 'nullable|exists:patients,id',
+            'submission_date' => 'nullable|date',
             'status' => 'nullable|in:Pending,Approved,Rejected,Paid',
             'notes' => 'nullable|string'
         ]);
+
+        // Auto-generate claim number if not provided
+        $claimNumber = $validated['claim_number'] ?? ('CLM-' . date('Ymd') . '-' . str_pad(\App\Models\InsuranceClaim::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT));
+        // Ensure uniqueness
+        while (\App\Models\InsuranceClaim::where('claim_number', $claimNumber)->exists()) {
+            $claimNumber = 'CLM-' . date('Ymd') . '-' . rand(1000, 9999);
+        }
         
         $claim = \App\Models\InsuranceClaim::create([
             'id' => \Illuminate\Support\Str::uuid(),
             'invoice_id' => $validated['invoice_id'],
             'insurance_company_id' => $validated['insurance_company_id'],
+            'patient_id' => $validated['patient_id'] ?? null,
             'claim_amount' => $validated['claim_amount'],
-            'claim_number' => $validated['claim_number'] ?? null,
+            'claim_number' => $claimNumber,
+            'submission_date' => $validated['submission_date'] ?? now()->toDateString(),
             'status' => $validated['status'] ?? 'Pending',
             'notes' => $validated['notes'] ?? null,
-            'claim_date' => now()
         ]);
         
         return response()->json(['claim' => $claim], 201);

@@ -33,10 +33,17 @@ import {
   Phone,
   Clipboard,
   HeartHandshake,
-
   Stethoscope,
   Pill,
+  Shield,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  X,
 } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function ReceptionistDashboard() {
   const { user } = useAuth();
@@ -47,6 +54,14 @@ export default function ReceptionistDashboard() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [insuranceCompanies, setInsuranceCompanies] = useState<any[]>([]);
+  const [showInsurancePanel, setShowInsurancePanel] = useState(false);
+  const [insurancePatients, setInsurancePatients] = useState<any[]>([]);
+  const [insuranceLoading, setInsuranceLoading] = useState(false);
+  const [insuranceSearch, setInsuranceSearch] = useState('');
+  const [insuranceFilter, setInsuranceFilter] = useState('');
+  const [selectedInsurancePatient, setSelectedInsurancePatient] = useState<any>(null);
+  const [showInsuranceDetailDialog, setShowInsuranceDetailDialog] = useState(false);
+  const [insuranceClaims, setInsuranceClaims] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true); // Initial load only
@@ -147,6 +162,11 @@ export default function ReceptionistDashboard() {
     fetchData(true); // Initial load with loading screen
     fetchConsultationFee();
     fetchMedications();
+
+    // Fetch insurance companies immediately and independently
+    api.get('/insurance/companies')
+      .then(r => setInsuranceCompanies(r.data.companies || []))
+      .catch(() => {});
 
     // Set up polling instead of real-time subscriptions (every 30 seconds)
     const intervalId = setInterval(() => {
@@ -884,6 +904,12 @@ export default function ReceptionistDashboard() {
     setAppointmentTime('');
     setAppointmentReason('');
     setShowRegisterDialog(true);
+    // Ensure insurance companies are loaded when dialog opens
+    if (insuranceCompanies.length === 0) {
+      api.get('/insurance/companies')
+        .then(r => setInsuranceCompanies(r.data.companies || []))
+        .catch(() => {});
+    }
   };
 
   const handleBookAppointment = () => {
@@ -1176,6 +1202,25 @@ export default function ReceptionistDashboard() {
     }
   };
 
+  const fetchInsurancePatients = async (search = '', companyId = '') => {
+    setInsuranceLoading(true);
+    try {
+      const params: any = { has_insurance: 1, limit: 100 };
+      if (search.trim()) params.search = search.trim();
+      if (companyId) params.insurance_company_id = companyId;
+      const { data } = await api.get('/patients', { params });
+      setInsurancePatients(data.patients || []);
+    } catch { toast.error('Failed to load insurance patients'); }
+    finally { setInsuranceLoading(false); }
+  };
+
+  const fetchPatientClaims = async (patientId: string) => {
+    try {
+      const { data } = await api.get(`/insurance/claims?patient_id=${patientId}`);
+      setInsuranceClaims(data.claims || []);
+    } catch { setInsuranceClaims([]); }
+  };
+
   const createVisitForReturningPatient = async (patient: any) => {
     // Determine routing based on visit type
     let currentStage = 'nurse';
@@ -1292,6 +1337,13 @@ export default function ReceptionistDashboard() {
       ? getDepartmentFee(appointmentDepartmentId)
       : consultationFee;
 
+    // Insurance patients — skip cash payment, go directly to visit creation
+    if (registerForm.insurance_company_id) {
+      setShowRegisterDialog(false);
+      await createVisitWithInsurance();
+      return;
+    }
+
     // Close registration dialog and show payment dialog
     setShowRegisterDialog(false);
     
@@ -1391,6 +1443,85 @@ export default function ReceptionistDashboard() {
     } catch (error: any) {
 
       toast.error(error.response?.data?.error || 'Failed to create visit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Insurance patient registration — no cash payment, bill goes to insurance
+  const createVisitWithInsurance = async () => {
+    setLoading(true);
+    try {
+      const patientData = {
+        full_name: registerForm.full_name,
+        date_of_birth: registerForm.date_of_birth,
+        gender: registerForm.gender,
+        phone: registerForm.phone,
+        email: registerForm.email || null,
+        blood_group: registerForm.blood_group || null,
+        address: registerForm.address || null,
+        insurance_company_id: registerForm.insurance_company_id || null,
+        insurance_number: registerForm.insurance_number || null,
+        status: 'Active',
+      };
+
+      const patientRes = await api.post('/patients', patientData);
+      if (patientRes.data.error) throw new Error(patientRes.data.error);
+
+      const patientId = patientRes.data.patient?.id;
+      if (!patientId) throw new Error('Patient ID not returned');
+
+      // Create invoice marked as Insurance (no cash collected)
+      const invoiceRes = await api.post('/invoices', {
+        patient_id: patientId,
+        invoice_date: new Date().toISOString().split('T')[0],
+        total_amount: consultationFee,
+        paid_amount: 0,
+        balance: consultationFee,
+        status: 'Pending',
+        notes: `Insurance Patient - ${registerForm.insurance_number || 'No insurance number'}`
+      });
+
+      const invoiceId = invoiceRes.data.invoice?.id;
+
+      // Create insurance claim if invoice created
+      if (invoiceId && registerForm.insurance_company_id) {
+        const claimNumber = `CLM-${Date.now().toString().slice(-8)}`;
+        await api.post('/insurance/claims', {
+          invoice_id: invoiceId,
+          insurance_company_id: registerForm.insurance_company_id,
+          patient_id: patientId,
+          claim_number: claimNumber,
+          claim_amount: consultationFee,
+          submission_date: new Date().toISOString().split('T')[0],
+          status: 'Pending',
+          notes: `Auto-created on patient registration`,
+        }).catch(() => {}); // non-critical
+      }
+
+      // Create visit
+      await api.post('/visits', {
+        patient_id: patientId,
+        visit_date: new Date().toISOString().split('T')[0],
+        visit_type: visitType || 'Consultation',
+        reception_status: 'Completed',
+        reception_completed_at: new Date().toISOString(),
+        current_stage: 'nurse',
+        nurse_status: 'Pending',
+        doctor_status: 'Pending',
+        lab_status: 'Not Required',
+        pharmacy_status: 'Not Required',
+        billing_status: 'Insurance',
+        overall_status: 'Active',
+        notes: `Insurance patient - ${registerForm.insurance_number || ''}`,
+      });
+
+      toast.success(`${registerForm.full_name} registered (Insurance) and sent to nurse!`);
+      setRegisterForm({ full_name: '', date_of_birth: '', gender: '', phone: '', email: '', blood_group: '', address: '', insurance_company_id: '', insurance_number: '' });
+      setVisitType('Consultation');
+      fetchData(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || error.message || 'Failed to register insurance patient');
     } finally {
       setLoading(false);
     }
@@ -2022,6 +2153,14 @@ export default function ReceptionistDashboard() {
                   <span className="text-green-700">Quick Service (Walk-in)</span>
                   <span className="text-xs text-green-600">→ Direct Service Only</span>
                 </Button>
+                <Button variant="outline" className="h-20 flex-col gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200" onClick={() => {
+                  setShowInsurancePanel(true);
+                  fetchInsurancePatients('', '');
+                }}>
+                  <Shield className="h-6 w-6 text-blue-600" />
+                  <span className="text-blue-700">Insurance Patients</span>
+                  <span className="text-xs text-blue-600">→ View & Search</span>
+                </Button>
                 <Button variant="outline" className="h-20 flex-col gap-2 bg-purple-50 hover:bg-purple-100 border-purple-200" onClick={() => setShowDirectPharmacyDialog(true)}>
                   <Pill className="h-6 w-6 text-purple-600" />
                   <span className="text-purple-700">Direct to Pharmacy</span>
@@ -2141,8 +2280,180 @@ export default function ReceptionistDashboard() {
         </div>
       </DashboardLayout>
 
+      {/* Insurance Patients Panel */}
+      <Dialog open={showInsurancePanel} onOpenChange={setShowInsurancePanel}>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" />
+              Insurance Patients
+            </DialogTitle>
+            <DialogDescription>All patients registered with insurance coverage</DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 py-3 border-b flex gap-3 flex-shrink-0">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, phone or insurance number..."
+                className="pl-9"
+                value={insuranceSearch}
+                onChange={e => {
+                  setInsuranceSearch(e.target.value);
+                  fetchInsurancePatients(e.target.value, insuranceFilter);
+                }}
+              />
+            </div>
+            <select
+              className="border rounded-md px-3 py-2 text-sm min-w-[180px]"
+              value={insuranceFilter}
+              onChange={e => {
+                setInsuranceFilter(e.target.value);
+                fetchInsurancePatients(insuranceSearch, e.target.value);
+              }}
+            >
+              <option value="">All Companies</option>
+              {insuranceCompanies.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <ScrollArea className="flex-1 px-6 py-4">
+            {insuranceLoading ? (
+              <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" /> Loading...
+              </div>
+            ) : insurancePatients.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Shield className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>No insurance patients found</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Insurance Company</TableHead>
+                    <TableHead>Insurance No.</TableHead>
+                    <TableHead>Gender / Age</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {insurancePatients.map((p: any) => {
+                    const age = p.date_of_birth
+                      ? new Date().getFullYear() - new Date(p.date_of_birth).getFullYear()
+                      : null;
+                    const company = p.insurance_company?.name || p.insurance_provider || '—';
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.full_name}</TableCell>
+                        <TableCell>{p.phone}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {company}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{p.insurance_number || '—'}</TableCell>
+                        <TableCell>{p.gender}{age ? ` / ${age} yrs` : ''}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => {
+                              setSelectedInsurancePatient(p);
+                              fetchPatientClaims(p.id);
+                              setShowInsuranceDetailDialog(true);
+                            }}
+                          >
+                            <FileText className="h-3 w-3" />
+                            View Report
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Insurance Patient Detail Dialog */}
+      {selectedInsurancePatient && (
+        <Dialog open={showInsuranceDetailDialog} onOpenChange={setShowInsuranceDetailDialog}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                Insurance Report — {selectedInsurancePatient.full_name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 p-4 bg-blue-50 rounded-lg text-sm">
+                <div><span className="text-muted-foreground">Name:</span> <strong>{selectedInsurancePatient.full_name}</strong></div>
+                <div><span className="text-muted-foreground">Phone:</span> {selectedInsurancePatient.phone}</div>
+                <div><span className="text-muted-foreground">Gender:</span> {selectedInsurancePatient.gender}</div>
+                <div><span className="text-muted-foreground">Blood Group:</span> {selectedInsurancePatient.blood_group || '—'}</div>
+                <div><span className="text-muted-foreground">DOB:</span> {selectedInsurancePatient.date_of_birth ? format(new Date(selectedInsurancePatient.date_of_birth), 'dd MMM yyyy') : '—'}</div>
+                <div><span className="text-muted-foreground">Address:</span> {selectedInsurancePatient.address || '—'}</div>
+              </div>
+              <div className="p-4 border border-blue-200 rounded-lg bg-white space-y-2 text-sm">
+                <p className="font-semibold text-blue-700 flex items-center gap-1"><Shield className="h-4 w-4" /> Insurance Details</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><span className="text-muted-foreground">Company:</span> <strong>{selectedInsurancePatient.insurance_company?.name || selectedInsurancePatient.insurance_provider || '—'}</strong></div>
+                  <div><span className="text-muted-foreground">Insurance No:</span> <span className="font-mono">{selectedInsurancePatient.insurance_number || '—'}</span></div>
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold mb-2 text-sm">Insurance Claims ({insuranceClaims.length})</p>
+                {insuranceClaims.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic text-center py-4 border rounded-lg">No claims found for this patient</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Claim #</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Approved</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {insuranceClaims.map((c: any) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-mono text-xs">{c.claim_number || c.id.slice(0, 8)}</TableCell>
+                          <TableCell>TSh {Number(c.claim_amount || 0).toLocaleString()}</TableCell>
+                          <TableCell>{c.approved_amount ? `TSh ${Number(c.approved_amount).toLocaleString()}` : '—'}</TableCell>
+                          <TableCell>
+                            <Badge variant={c.status === 'Paid' ? 'default' : c.status === 'Approved' ? 'secondary' : c.status === 'Rejected' ? 'destructive' : 'outline'} className="text-[10px]">{c.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">{c.submission_date ? format(new Date(c.submission_date), 'dd MMM yyyy') : '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Register Patient Dialog */}
-      <Dialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
+      <Dialog open={showRegisterDialog} onOpenChange={(open) => {
+        setShowRegisterDialog(open);
+        if (open) {
+          api.get('/insurance/companies')
+            .then(r => setInsuranceCompanies(r.data.companies || []))
+            .catch(() => {});
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Register New Patient</DialogTitle>

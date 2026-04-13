@@ -79,6 +79,7 @@ class ServiceController extends Controller
     {
         $validated = $request->validate([
             'patient_id' => 'required|uuid|exists:patients,id',
+            'visit_id'   => 'nullable|uuid|exists:patient_visits,id',
             'service_id' => 'nullable|uuid|exists:medical_services,id',
             'service_name' => 'nullable|string|max:255',
             'quantity' => 'nullable|integer|min:1',
@@ -94,6 +95,10 @@ class ServiceController extends Controller
             $service = MedicalService::findOrFail($validated['service_id']);
             $validated['unit_price'] = $service->base_price;
             $validated['total_price'] = $service->base_price * ($validated['quantity'] ?? 1);
+            // Always populate service_name from the service record
+            if (empty($validated['service_name'])) {
+                $validated['service_name'] = $service->service_name;
+            }
         } else {
             // For medications or custom items, use provided prices
             if (empty($validated['service_name'])) {
@@ -140,8 +145,34 @@ class ServiceController extends Controller
             $query->where('patient_id', $request->patient_id);
         }
 
+        // Filter by visit if provided
+        if ($request->has('visit_id')) {
+            $query->where('visit_id', $request->visit_id);
+        }
+
         $services = $query->orderBy('service_date', 'desc')->get();
 
         return response()->json(['services' => $services]);
+    }
+
+    public function updatePatientService(Request $request, $id)
+    {
+        $patientService = PatientService::findOrFail($id);
+
+        $validated = $request->validate([
+            'status'       => 'sometimes|string',
+            'notes'        => 'sometimes|nullable|string',
+            'completed_by' => 'sometimes|nullable|exists:users,id',
+            'completed_at' => 'sometimes|nullable|date',
+        ]);
+
+        if (isset($validated['status']) && $validated['status'] === 'Completed' && !isset($validated['completed_at'])) {
+            $validated['completed_at'] = now();
+            $validated['completed_by'] = auth()->id();
+        }
+
+        $patientService->update($validated);
+
+        return response()->json(['patient_service' => $patientService->load('service')]);
     }
 }

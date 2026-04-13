@@ -12,7 +12,8 @@ class InsuranceClaim extends Model
     protected $fillable = [
         'claim_number', 'patient_id', 'insurance_company_id', 'invoice_id',
         'claim_amount', 'approved_amount', 'status', 'submission_date',
-        'approval_date', 'payment_date', 'notes', 'icd10_code', 'icd10_description'
+        'approval_date', 'payment_date', 'notes', 'icd10_code', 'icd10_description',
+        'claim_date'
     ];
 
     protected $casts = [

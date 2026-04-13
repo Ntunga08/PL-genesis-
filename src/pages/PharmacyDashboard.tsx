@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Upload, File, CheckCircle, AlertCircle, Pill, AlertTriangle, Package, Plus, Edit, Loader2, Users, FileText, Trash2, X } from 'lucide-react';
+import { Upload, File, CheckCircle, AlertCircle, Pill, AlertTriangle, Package, Plus, Edit, Loader2, Users, FileText, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { generateInvoiceNumber, logActivity } from '@/lib/utils';
 import { DispenseDialog } from '@/components/DispenseDialog';
@@ -76,6 +76,7 @@ export default function PharmacyDashboard() {
 
   const [medications, setMedications] = useState<Medication[]>([]);
   const [stats, setStats] = useState({ pendingPrescriptions: 0, lowStock: 0, totalMedications: 0 });
+  const [lowStockOpen, setLowStockOpen] = useState(true);
   const [loading, setLoading] = useState(true); // Initial load only
   const [refreshing, setRefreshing] = useState(false); // Background refresh
   const [medicationDialogOpen, setMedicationDialogOpen] = useState<boolean>(false);
@@ -1777,43 +1778,57 @@ export default function PharmacyDashboard() {
             {/* Critical Low Stock Alert */}
             {medications.filter(m => (m.stock_quantity || m.quantity_in_stock || 0) <= 5).length > 0 && (
               <Card className="shadow-lg border-red-200 bg-red-50 mb-4">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-700">
-                    <AlertTriangle className="h-5 w-5" />
-                    Critical Low Stock Alert
-                  </CardTitle>
-                  <CardDescription className="text-red-600">
-                    {medications.filter(m => (m.stock_quantity || m.quantity_in_stock || 0) <= 5).length} medication(s) have 5 or fewer units remaining
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {medications
-                      .filter(m => (m.stock_quantity || m.quantity_in_stock || 0) <= 5)
-                      .sort((a, b) => (a.stock_quantity || a.quantity_in_stock || 0) - (b.stock_quantity || b.quantity_in_stock || 0))
-                      .map(med => (
-                        <div key={med.id} className="flex items-center justify-between p-3 bg-white rounded-md border border-red-200">
-                          <div className="flex items-center gap-3">
-                            <AlertCircle className="h-5 w-5 text-red-600" />
-                            <div>
-                              <p className="font-medium text-red-900">{med.name} ({med.strength})</p>
-                              <p className="text-sm text-red-700">
-                                Only <span className="font-bold">{med.stock_quantity || med.quantity_in_stock || 0}</span> units left
-                                {(med.stock_quantity || med.quantity_in_stock || 0) === 0 && <span className="ml-2 text-red-800 font-bold">OUT OF STOCK!</span>}
-                              </p>
-                            </div>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => openStockDialog(med)}
-                          >
-                            Restock Now
-                          </Button>
-                        </div>
-                      ))}
+                <CardHeader
+                  className="cursor-pointer select-none"
+                  onClick={() => setLowStockOpen(o => !o)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-red-700">
+                        <AlertTriangle className="h-5 w-5" />
+                        Critical Low Stock Alert
+                        <Badge variant="destructive" className="ml-1">
+                          {medications.filter(m => (m.stock_quantity || m.quantity_in_stock || 0) <= 5).length}
+                        </Badge>
+                      </CardTitle>
+                      {!lowStockOpen && (
+                        <CardDescription className="text-red-600">
+                          {medications.filter(m => (m.stock_quantity || m.quantity_in_stock || 0) <= 5).length} medication(s) need attention — click to expand
+                        </CardDescription>
+                      )}
+                    </div>
+                    {lowStockOpen
+                      ? <ChevronUp className="h-5 w-5 text-red-500 flex-shrink-0" />
+                      : <ChevronDown className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    }
                   </div>
-                </CardContent>
+                </CardHeader>
+                {lowStockOpen && (
+                  <CardContent>
+                    <div className="space-y-2">
+                      {medications
+                        .filter(m => (m.stock_quantity || m.quantity_in_stock || 0) <= 5)
+                        .sort((a, b) => (a.stock_quantity || a.quantity_in_stock || 0) - (b.stock_quantity || b.quantity_in_stock || 0))
+                        .map(med => (
+                          <div key={med.id} className="flex items-center justify-between p-3 bg-white rounded-md border border-red-200">
+                            <div className="flex items-center gap-3">
+                              <AlertCircle className="h-5 w-5 text-red-600" />
+                              <div>
+                                <p className="font-medium text-red-900">{med.name} ({med.strength})</p>
+                                <p className="text-sm text-red-700">
+                                  Only <span className="font-bold">{med.stock_quantity || med.quantity_in_stock || 0}</span> units left
+                                  {(med.stock_quantity || med.quantity_in_stock || 0) === 0 && <span className="ml-2 text-red-800 font-bold">OUT OF STOCK!</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <Button size="sm" variant="destructive" onClick={() => openStockDialog(med)}>
+                              Restock Now
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             )}
 

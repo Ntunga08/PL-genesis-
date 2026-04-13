@@ -537,6 +537,25 @@ export default function PatientReports() {
     toast.success('Print dialog opened');
   };
 
+  const parseLabResult = (t: any): string => {
+    if (t.result_value) return t.result_value;
+    if (t.results) {
+      try {
+        const parsed = typeof t.results === 'string' ? JSON.parse(t.results) : t.results;
+        if (parsed.results) {
+          return Object.entries(parsed.results)
+            .map(([k, rv]: any) => `${k}: ${rv?.value ?? rv}${rv?.unit ? ' ' + rv.unit : ''}`)
+            .join(', ');
+        }
+        if (parsed.result_value) return parsed.result_value;
+      } catch {}
+    }
+    if (Array.isArray(t.lab_results) && t.lab_results.length > 0) {
+      return t.lab_results.map((r: any) => `${r.result_value}${r.unit ? ' ' + r.unit : ''}${r.abnormal_flag ? ' ⚠' : ''}`).join(', ');
+    }
+    return '';
+  };
+
   const filteredPatients = patients.filter(p => {
     const fullName = p.full_name || `${p.first_name} ${p.last_name}`;
     return fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1295,7 +1314,7 @@ export default function PatientReports() {
                             <TableCell className="font-medium">{t.test_name}</TableCell>
                             <TableCell>{t.test_type || '—'}</TableCell>
                             <TableCell><Badge variant={t.status === 'Completed' ? 'default' : 'secondary'} className="text-[10px]">{t.status}</Badge></TableCell>
-                            <TableCell className="text-xs">{t.result_value || t.result || '—'}</TableCell>
+                            <TableCell className="text-xs">{parseLabResult(t) || <span className="italic text-muted-foreground">Pending</span>}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1568,8 +1587,10 @@ export default function PatientReports() {
                         <td style={{ border: '1px solid #ddd', padding: '8px' }}>{test.test_name || 'N/A'}</td>
                         <td style={{ border: '1px solid #ddd', padding: '8px' }}>{test.test_type || 'N/A'}</td>
                         <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                          {test.result_value || test.result || 'Pending'}
-                          {test.result_unit && ` ${test.result_unit}`}
+                          {(() => {
+                            const r = parseLabResult(test);
+                            return r || (test.status === 'Completed' ? 'No values recorded' : 'Pending');
+                          })()}
                           {test.reference_range && (
                             <div style={{ fontSize: '10px', color: '#666' }}>
                               Normal: {test.reference_range}

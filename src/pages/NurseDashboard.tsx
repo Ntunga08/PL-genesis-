@@ -35,6 +35,10 @@ export default function NurseDashboard() {
   const [selectedVisitForForm, setSelectedVisitForForm] = useState<any>(null);
   const [serviceFormTemplate, setServiceFormTemplate] = useState<any>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [showCompleteServicesDialog, setShowCompleteServicesDialog] = useState(false);
+  const [visitToComplete, setVisitToComplete] = useState<any>(null);
+  const [servicesToComplete, setServicesToComplete] = useState<any[]>([]);
+  const [completingServices, setCompletingServices] = useState(false);
   const [services, setServices] = useState<any[]>([]);
   const [showRegisterPatientDialog, setShowRegisterPatientDialog] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState({
@@ -1710,6 +1714,63 @@ export default function NurseDashboard() {
     }
   };
 
+  // Handle completing doctor-ordered nurse services (procedures, nursing care, etc.)
+  const handleCompleteOrderedServices = async (visit: any, orderedServices: any[]) => {
+    // Fetch services if not loaded yet
+    let services = orderedServices;
+    if (services.length === 0) {
+      try {
+        const byVisit = await api.get(`/patient-services?visit_id=${visit.id}&status=Pending`);
+        services = byVisit.data.services || [];
+        if (services.length === 0) {
+          const byPatient = await api.get(`/patient-services?patient_id=${visit.patient_id}&status=Pending`);
+          services = byPatient.data.services || [];
+        }
+      } catch { /* silent */ }
+    }
+    // Open confirmation dialog
+    setVisitToComplete(visit);
+    setServicesToComplete(services);
+    setShowCompleteServicesDialog(true);
+  };
+
+  const confirmCompleteServices = async () => {
+    if (!visitToComplete) return;
+    setCompletingServices(true);
+    try {
+      for (const svc of servicesToComplete) {
+        await api.put(`/patient-services/${svc.id}`, { status: 'Completed' }).catch(() => {});
+      }
+
+      const { data: freshVisit } = await api.get(`/visits/${visitToComplete.id}`).catch(() => ({ data: visitToComplete }));
+      const v = freshVisit?.visit || freshVisit;
+      const stillHasLab = v.lab_status === 'Pending';
+      const stillHasPharmacy = v.pharmacy_status === 'Pending';
+      const nextStage = stillHasLab ? 'lab' : stillHasPharmacy ? 'pharmacy' : 'billing';
+
+      await api.put(`/visits/${visitToComplete.id}`, {
+        nurse_status: 'Completed',
+        nurse_completed_at: new Date().toISOString(),
+        current_stage: nextStage,
+        ...(nextStage === 'billing' ? { billing_status: 'Pending' } : {}),
+      });
+
+      const names = servicesToComplete.length > 0
+        ? servicesToComplete.map((s: any) => s.service_name).filter(Boolean).join(', ')
+        : 'ordered services';
+      toast.success(`Services completed for ${visitToComplete.patient?.full_name} → ${nextStage === 'billing' ? 'Billing' : nextStage === 'lab' ? 'Lab' : 'Pharmacy'}`);
+      setPendingVisits(prev => prev.filter(v => v.id !== visitToComplete.id));
+      setShowCompleteServicesDialog(false);
+      setVisitToComplete(null);
+      setServicesToComplete([]);
+      setTimeout(() => fetchData(false), 1000);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to complete services');
+    } finally {
+      setCompletingServices(false);
+    }
+  };
+
   const dischargeQuickServicePatient = async (visit: any) => {
     try {
       await api.put(`/visits/${visit.id}`, {
@@ -2022,16 +2083,28 @@ export default function NurseDashboard() {
       const labResultsResponse = await api.get('/visits?visit_type=Lab Only&lab_status=Completed&current_stage=nurse');
       const labResultsData = Array.isArray(labResultsResponse.data.visits) ? labResultsResponse.data.visits : [];
 
-      // Fetch patient services for Quick Service visits
+      // Fetch patient services for Quick Service visits AND doctor-ordered nurse visits
       const quickServiceVisits = visitsData.filter(v => v.visit_type === 'Quick Service');
+      const nurseOrderedVisits = visitsData.filter(v =>
+        v.visit_type !== 'Quick Service' &&
+        v.visit_type !== 'Lab Only' &&
+        (v.current_stage === 'multi_order' || 
+         (v.nurse_status === 'Pending' && v.doctor_status === 'Completed'))
+      );
       const servicesMap: Record<string, any[]> = {};
       
-      for (const visit of quickServiceVisits) {
+      for (const visit of [...quickServiceVisits, ...nurseOrderedVisits]) {
         try {
-          const servicesRes = await api.get(`/patient-services?patient_id=${visit.patient_id}&service_date=${visit.visit_date}`);
-          servicesMap[visit.id] = servicesRes.data.services || [];
+          // Try by visit_id first (new records), fall back to patient_id + date (legacy records)
+          let services: any[] = [];
+          const byVisit = await api.get(`/patient-services?visit_id=${visit.id}&status=Pending`);
+          services = byVisit.data.services || [];
+          if (services.length === 0) {
+            const byPatient = await api.get(`/patient-services?patient_id=${visit.patient_id}&status=Pending`);
+            services = byPatient.data.services || [];
+          }
+          servicesMap[visit.id] = services;
         } catch (error) {
-
           servicesMap[visit.id] = [];
         }
       }
@@ -2310,6 +2383,9 @@ export default function NurseDashboard() {
                       {visit.visit_type && visit.visit_type !== 'Consultation' && (
                         <Badge variant="outline" className="mt-1">{visit.visit_type}</Badge>
                       )}
+                      {(visit.current_stage === 'multi_order' || visit.nurse_status === 'Pending') && visit.visit_type !== 'Quick Service' && visit.visit_type !== 'Lab Only' && (
+                        <></>
+                      )}
                       {visit.visit_type === 'Quick Service' && visit.notes && (
                         <p className="text-xs text-blue-600 mt-1">📋 {visit.notes}</p>
                       )}
@@ -2330,6 +2406,8 @@ export default function NurseDashboard() {
                       (() => {
                         // Get actual patient services for this visit
                         const visitServices = patientServices[visit.id] || [];
+                        let buttonText = 'Complete Service';
+                        let icon = <CheckCircle className="h-4 w-4 mr-2" />;
 
                         // Determine service type from actual services assigned
                         if (visitServices.length > 0) {
@@ -2403,12 +2481,43 @@ export default function NurseDashboard() {
                           </Button>
                         );
                       })()
-                    ) : (
-                      <Button onClick={() => handleRecordVitals(visit.patient)}>
-                        <Thermometer className="h-4 w-4 mr-2" />
-                        Record Vitals
-                      </Button>
-                    )}
+                    ) : (() => {
+                      // Doctor-ordered nurse services (Consultation visit with nurse_status=Pending)
+                      const orderedServices = patientServices[visit.id] || [];
+                      // Only treat as doctor-ordered if doctor has already completed their part
+                      // New patients have doctor_status = 'Pending' — they need vitals first
+                      const isDoctorOrdered = 
+                        visit.current_stage === 'multi_order' ||
+                        (visit.nurse_status === 'Pending' && visit.doctor_status === 'Completed');
+
+                      // Show "Complete Services" for doctor-ordered visits only
+                      if (isDoctorOrdered) {
+                        const serviceNames = orderedServices.map((s: any) => s.service_name).filter(Boolean).join(', ');
+                        return (
+                          <div className="flex flex-col items-end gap-1">
+                            {serviceNames && (
+                              <p className="text-xs text-muted-foreground text-right max-w-[180px] truncate" title={serviceNames}>
+                                📋 {serviceNames}
+                              </p>
+                            )}
+                            <Button
+                              onClick={() => handleCompleteOrderedServices(visit, orderedServices)}
+                              className="bg-purple-600 hover:bg-purple-700"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Complete Services
+                            </Button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Button onClick={() => handleRecordVitals(visit.patient)}>
+                          <Thermometer className="h-4 w-4 mr-2" />
+                          Record Vitals
+                        </Button>
+                      );
+                    })()}
                 </div>
                 ))}
               </div>
@@ -3454,6 +3563,62 @@ export default function NurseDashboard() {
         submitting={formSubmitting}
       />
 
+      {/* Complete Ordered Services Confirmation Dialog */}
+      <Dialog open={showCompleteServicesDialog} onOpenChange={setShowCompleteServicesDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-purple-600" />
+              Complete Ordered Services
+            </DialogTitle>
+          </DialogHeader>
+          {visitToComplete && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <p className="font-medium text-purple-900">{visitToComplete.patient?.full_name}</p>
+                <p className="text-sm text-muted-foreground">{visitToComplete.patient?.phone}</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">Services to complete:</p>
+                {servicesToComplete.length > 0 ? (
+                  <div className="space-y-2">
+                    {servicesToComplete.map((svc: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 p-2 border rounded bg-gray-50 text-sm">
+                        <CheckCircle className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium">{svc.service_name || 'Service'}</p>
+                          {svc.notes && <p className="text-xs text-muted-foreground">{svc.notes}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No specific services found — will mark nurse stage as complete.</p>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Confirming will mark these services as done and move the patient to the next stage.
+              </p>
+
+              <div className="flex gap-2 justify-end pt-2 border-t">
+                <Button variant="outline" onClick={() => setShowCompleteServicesDialog(false)} disabled={completingServices}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={confirmCompleteServices}
+                  disabled={completingServices}
+                >
+                  {completingServices ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                  Confirm Complete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </DashboardLayout>
   );

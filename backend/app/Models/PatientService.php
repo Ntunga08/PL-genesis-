@@ -10,7 +10,7 @@ class PatientService extends Model
     use HasUuids;
 
     protected $fillable = [
-        'patient_id', 'service_id', 'service_name', 'quantity', 'unit_price', 'total_price',
+        'patient_id', 'visit_id', 'service_id', 'service_name', 'quantity', 'unit_price', 'total_price',
         'service_date', 'status', 'notes', 'created_by', 'completed_by', 'completed_at'
     ];
 

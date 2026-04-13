@@ -12,8 +12,19 @@ class LabTestController extends Controller
     {
         $query = LabTest::with(['patient', 'doctor']);
         
-        if ($request->has('patient_id')) {
+        if ($request->has('patient_ids')) {
+            $ids = explode(',', $request->patient_ids);
+            $query->whereIn('patient_id', $ids);
+        } elseif ($request->has('patient_id')) {
             $query->where('patient_id', $request->patient_id);
+        }
+
+        if ($request->has('visit_id')) {
+            $query->where('visit_id', $request->visit_id);
+        }
+
+        if ($request->has('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
         }
         
         if ($request->has('status')) {
@@ -47,6 +58,7 @@ class LabTestController extends Controller
             'test_type' => 'required|string',
             'doctor_id' => 'required|exists:users,id',
             'test_date' => 'required|date',
+            'visit_id' => 'nullable|exists:patient_visits,id',
         ]);
         
         $labTest = LabTest::create([
@@ -58,6 +70,7 @@ class LabTestController extends Controller
             'test_date' => $request->test_date,
             'status' => $request->status ?? 'Pending',
             'notes' => $request->notes,
+            'visit_id' => $request->visit_id,
         ]);
         
         return response()->json(['labTest' => $labTest], 201);

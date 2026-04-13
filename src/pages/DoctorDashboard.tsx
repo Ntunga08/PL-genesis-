@@ -1063,7 +1063,26 @@ export default function DoctorDashboard() {
   // Handler for starting consultation
   const handleStartConsultation = async (visit: any) => {
     try {
-      setSelectedVisit(visit);
+      // Fetch the complete visit with all relations (vital_signs, nurse_notes, labTests, etc.)
+      let fullVisit = visit;
+      try {
+        const { data } = await api.get(`/visits/${visit.id}`);
+        if (data?.visit) {
+          fullVisit = { ...data.visit, patient: data.visit.patient || visit.patient };
+        }
+      } catch {
+        // fall back to the visit object we already have
+      }
+
+      // If labTests still empty, fetch directly by patient_id as final fallback
+      if ((!fullVisit.labTests || fullVisit.labTests.length === 0) && fullVisit.patient_id) {
+        try {
+          const { data } = await api.get(`/labs?patient_id=${fullVisit.patient_id}&limit=50`);
+          fullVisit = { ...fullVisit, labTests: data.labTests || [] };
+        } catch { /* silent */ }
+      }
+
+      setSelectedVisit(fullVisit);
       setShowConsultationSheet(true);
 
       const updateData: any = {
@@ -1866,7 +1885,10 @@ export default function DoctorDashboard() {
 
       // Map lab tests and prescriptions to visits
       const visitsWithLabTests = visitsData.map(visit => {
-        const patientLabTests = allLabTests.filter(test => test.patient_id === visit.patient?.id);
+        // Filter by visit_id first (most accurate), fall back to patient_id
+        const patientLabTests = allLabTests.filter(test =>
+          test.visit_id ? test.visit_id === visit.id : test.patient_id === visit.patient?.id
+        );
         const patientPrescriptions = allPrescriptions.filter(prescription => prescription.patient_id === visit.patient?.id);
         
         return {
@@ -2597,19 +2619,13 @@ export default function DoctorDashboard() {
                   <TableBody>
                     {pendingVisits
                       .filter(visit => {
-                        // Basic visit conditions
                         const basicConditions = visit.lab_completed_at && 
                           !visit.lab_results_reviewed && 
                           visit.doctor_status !== 'Completed' && 
                           visit.current_stage === 'doctor' &&
                           visit.overall_status === 'Active';
                         
-                        // Only show if there are actually completed tests (not just cancelled ones)
-                        const hasCompletedTests = (visit.labTests || []).some((test: any) => 
-                          test.status === 'Completed'
-                        );
-                        
-                        return basicConditions && hasCompletedTests;
+                        return basicConditions;
                       })
                       .map((visit) => {
                         // Only count completed tests, exclude cancelled ones
@@ -2659,7 +2675,7 @@ export default function DoctorDashboard() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="bg-green-50">
-                                  {labTestCount} test{labTestCount !== 1 ? 's' : ''}
+                                  {labTestCount > 0 ? `${labTestCount} test${labTestCount !== 1 ? 's' : ''}` : 'Results ready'}
                                 </Badge>
                                 {hasAbnormal && (
                                   <Badge variant="destructive" className="text-xs">

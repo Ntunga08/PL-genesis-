@@ -89,6 +89,16 @@ class VisitController extends Controller
     {
         $visit = PatientVisit::with(['patient', 'doctor', 'appointment', 'prescriptions', 'labTests'])
                             ->findOrFail($id);
+
+        // If no labTests linked via visit_id (legacy records), fall back to patient_id lookup
+        if ($visit->labTests->isEmpty()) {
+            $visit->setRelation('labTests',
+                \App\Models\LabTest::where('patient_id', $visit->patient_id)
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+            );
+        }
+
         return response()->json(['visit' => $visit]);
     }
 

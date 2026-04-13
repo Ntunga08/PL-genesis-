@@ -456,9 +456,14 @@ export default function LabDashboard() {
   // Handle discharge for direct-to-lab patients
   const handleDischargePatient = async (patientId: string) => {
     try {
-      // Get the patient's visit
-      const { data } = await api.get(`/visits?patient_id=${patientId}&current_stage=lab&overall_status=Active&limit=1`);
-      const visits = data.visits || [];
+      const [labRes, multiRes] = await Promise.allSettled([
+        api.get(`/visits?patient_id=${patientId}&current_stage=lab&overall_status=Active&limit=1`),
+        api.get(`/visits?patient_id=${patientId}&current_stage=multi_order&overall_status=Active&limit=1`),
+      ]);
+      const visits = [
+        ...(labRes.status === 'fulfilled' ? labRes.value.data.visits || [] : []),
+        ...(multiRes.status === 'fulfilled' ? multiRes.value.data.visits || [] : []),
+      ];
 
       if (visits && visits.length > 0) {
         const visit = visits[0];
@@ -503,97 +508,73 @@ export default function LabDashboard() {
 
   const updatePatientWorkflow = async (patientId: string) => {
     try {
+      // Fetch visits in lab stage OR multi_order stage (quick-dispatch sets multi_order)
+      const [labRes, multiRes] = await Promise.allSettled([
+        api.get(`/visits?patient_id=${patientId}&current_stage=lab&limit=1`),
+        api.get(`/visits?patient_id=${patientId}&current_stage=multi_order&limit=1`),
+      ]);
 
-      // Get active visits for this patient that are in lab stage
-      const { data } = await api.get(`/visits?patient_id=${patientId}&current_stage=lab&limit=1`);
-      const visits = data.visits || [];
+      const labVisits = labRes.status === 'fulfilled' ? (labRes.value.data.visits || []) : [];
+      const multiVisits = multiRes.status === 'fulfilled' ? (multiRes.value.data.visits || []) : [];
+      const visits = [...labVisits, ...multiVisits];
 
       if (visits && visits.length > 0) {
         const visit = visits[0];
         const visitId = visit.id;
 
-        // IMPROVED WORKFLOW: Determine where to send patient based on who ordered the tests
-        // 1. Doctor ordered tests → Send back to doctor for review
-        // 2. Nurse ordered tests → Send back to nurse for next steps
-        // 3. Direct lab orders → Send to billing
-        
-        // IMPROVED: Better detection logic for who ordered the tests
-        const orderedByDoctor = (
-          // Has doctor involvement
-          (visit.doctor_status !== 'Not Required' && visit.doctor_id) ||
-          // Visit type is consultation (not Lab Only)
-          (visit.visit_type === 'Consultation' && visit.doctor_id) ||
-          // Doctor status indicates involvement
-          (visit.doctor_status === 'Pending Review' || visit.doctor_status === 'In Progress' || visit.doctor_status === 'In Consultation')
+        // Determine routing: doctor ordered → back to doctor
+        // A doctor was involved if doctor_id is set and doctor_status is not 'Not Required'
+        const orderedByDoctor = !!(
+          visit.doctor_id &&
+          visit.doctor_status !== 'Not Required'
         );
-        
+
         const orderedByNurse = (
-          // Nurse completed and doctor not required (nurse workflow)
-          (visit.nurse_status === 'Completed' && visit.doctor_status === 'Not Required') || 
-          // Notes indicate nurse ordering
+          (visit.nurse_status === 'Completed' && visit.doctor_status === 'Not Required') ||
           (visit.notes && visit.notes.includes('nurse'))
         );
-        
+
         const isLabOnlyVisit = visit.visit_type === 'Lab Only';
 
         let updateData;
-        if (orderedByDoctor) {
-          // Lab tests ordered by doctor → send back to doctor for review
+        if (orderedByDoctor && !isLabOnlyVisit) {
           updateData = {
             lab_status: 'Completed',
             lab_completed_at: new Date().toISOString(),
             current_stage: 'doctor',
             doctor_status: 'Pending Review'
           };
-
         } else if (orderedByNurse && !isLabOnlyVisit) {
-          // Lab tests ordered by nurse in consultation → send back to nurse for review
           updateData = {
             lab_status: 'Completed',
             lab_completed_at: new Date().toISOString(),
             current_stage: 'nurse',
-            nurse_status: 'Pending Review' // Nurse needs to review lab results
+            nurse_status: 'Pending Review'
           };
-
-        } else if (isLabOnlyVisit || orderedByNurse) {
-          // Lab Only visits or nurse-ordered direct lab → send to billing
+        } else {
           updateData = {
             lab_status: 'Completed',
             lab_completed_at: new Date().toISOString(),
             current_stage: 'billing',
             billing_status: 'Pending'
           };
-
-        } else {
-          // Direct lab orders (Lab Only visits) → send to billing
-          // Consultation visits with unclear routing → send to billing as fallback
-          updateData = {
-            lab_status: 'Completed',
-            lab_completed_at: new Date().toISOString(),
-            current_stage: 'billing',
-            billing_status: 'Pending'
-          };
-
         }
-        
-        const response = await api.put(`/visits/${visitId}`, updateData);
 
-        if (orderedByDoctor) {
-          toast.success('Lab tests completed. Patient sent back to doctor for review.');
-        } else if (orderedByNurse) {
-          toast.success('Lab tests completed. Patient sent back to nurse for review.');
+        await api.put(`/visits/${visitId}`, updateData);
+
+        if (orderedByDoctor && !isLabOnlyVisit) {
+          toast.success('Lab tests completed — patient sent back to doctor for review.');
+        } else if (orderedByNurse && !isLabOnlyVisit) {
+          toast.success('Lab tests completed — patient sent back to nurse for review.');
         } else {
-          toast.success('Lab tests completed. Patient sent to billing for payment.');
+          toast.success('Lab tests completed — patient sent to billing.');
         }
-        
-        // Refresh the lab dashboard to remove completed patient from queue
+
         await fetchData(false);
       } else {
-
-        // Get the test to find the doctor
+        // No active visit found — create one linked to the doctor who ordered
         const test = selectedPatientTests[0];
         if (test && test.doctor_id) {
-          // Create a new visit for this patient
           const newVisit = {
             patient_id: patientId,
             doctor_id: test.doctor_id,
@@ -605,29 +586,20 @@ export default function LabDashboard() {
             doctor_status: 'Pending Review',
             overall_status: 'Active'
           };
-
           const response = await api.post('/visits', newVisit);
-
-          // Update the lab tests with the new visit_id
-          if (response.data.visit && response.data.visit.id) {
-            for (const test of selectedPatientTests) {
-              await api.put(`/labs/${test.id}`, { visit_id: response.data.visit.id });
+          if (response.data.visit?.id) {
+            for (const t of selectedPatientTests) {
+              await api.put(`/labs/${t.id}`, { visit_id: response.data.visit.id });
             }
           }
-          
-          toast.success('Lab results sent to doctor for review');
-          
-          // Refresh the lab dashboard
+          toast.success('Lab results sent to doctor for review.');
           await fetchData(false);
         } else {
-          toast.warning('Could not create visit - no doctor assigned');
+          toast.warning('Could not route patient — no doctor assigned to these tests.');
         }
       }
     } catch (error: any) {
-
-
       toast.error(`Failed to update workflow: ${error.response?.data?.error || error.message}`);
-      // Don't throw error - results were already saved successfully
     }
   };
 
@@ -656,31 +628,32 @@ export default function LabDashboard() {
         return;
       }
 
-      // First, let's find the correct patient visit for this patient (in lab stage)
-      const { data: visitData } = await api.get(`/visits?patient_id=${patientId}&current_stage=lab&limit=5`);
-      const visits = visitData.visits || [];
+      // Find the visit — could be in 'lab' or 'multi_order' stage
+      const [labRes2, multiRes2] = await Promise.allSettled([
+        api.get(`/visits?patient_id=${patientId}&current_stage=lab&limit=1`),
+        api.get(`/visits?patient_id=${patientId}&current_stage=multi_order&limit=1`),
+      ]);
+      const allVisits = [
+        ...(labRes2.status === 'fulfilled' ? labRes2.value.data.visits || [] : []),
+        ...(multiRes2.status === 'fulfilled' ? multiRes2.value.data.visits || [] : []),
+      ];
 
-      if (visits && visits.length > 0) {
-        // Find the most appropriate visit to update (prefer one in lab stage)
-        let visitToUpdate = visits.find(v => v.current_stage === 'lab') || visits[0];
-
+      if (allVisits.length > 0) {
+        const visitToUpdate = allVisits[0];
+        const routeToDoctor = !!(visitToUpdate.doctor_id && visitToUpdate.doctor_status !== 'Not Required');
         try {
           await api.put(`/visits/${visitToUpdate.id}`, {
             lab_status: 'Completed',
             lab_completed_at: new Date().toISOString(),
-            current_stage: 'doctor',
-            doctor_status: 'Pending Review'
+            current_stage: routeToDoctor ? 'doctor' : 'billing',
+            ...(routeToDoctor ? { doctor_status: 'Pending Review' } : { billing_status: 'Pending' }),
           });
-
-          toast.success('Lab tests completed. Patient sent back to doctor for review.');
+          toast.success(routeToDoctor ? 'Lab test completed — patient sent back to doctor.' : 'Lab test completed — patient sent to billing.');
         } catch (workflowError) {
-
           toast.error('Test completed but failed to update workflow');
         }
       } else {
-
-
-        // Create a patient visit if none exists
+        // No visit found — create one routed to doctor
         try {
           await api.post('/visits', {
             patient_id: patientId,
@@ -690,13 +663,11 @@ export default function LabDashboard() {
             reception_status: 'Checked In',
             nurse_status: 'Completed',
             lab_status: 'Completed',
-            doctor_status: 'Pending',
+            doctor_status: 'Pending Review',
             lab_completed_at: new Date().toISOString()
           });
-
           toast.success('Lab result submitted and patient moved to doctor consultation');
         } catch (createError) {
-
           toast.error('Test completed but failed to create patient visit');
         }
       }
@@ -704,7 +675,7 @@ export default function LabDashboard() {
 
     toast.success('Test status updated');
     fetchData();
-};
+  };
 
 
 
