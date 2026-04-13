@@ -1,139 +1,121 @@
-# Haset Hospital Management System
+<div align="center">
 
-A full-stack hospital management system built with React (frontend) and Laravel (backend), deployed at [hasetcompany.or.tz](https://hasetcompany.or.tz).
+# 🏥 Haset Hospital Management System
 
----
+**Digitizing healthcare — from patient registration to discharge.**
 
-## Tech Stack
+[![Live](https://img.shields.io/badge/Live-hasetcompany.or.tz-blue?style=flat-square)](https://hasetcompany.or.tz)
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
-| Backend | Laravel 12, PHP, Sanctum (API auth) |
-| Database | MySQL |
-| Payments | ZenoPay |
-| Real-time | Socket.io |
+</div>
 
 ---
 
-## Roles
+## What is Haset HMS?
 
-| Role | Access |
-|---|---|
-| Admin | Full system access, user management, reports, ICD-10 import |
-| Doctor | Patient consultations, diagnosis, lab orders, prescriptions |
-| Nurse | Vitals, triage, patient intake |
-| Lab | Lab test processing and results |
-| Pharmacy | Prescription dispensing, inventory |
-| Billing | Invoices, payments, insurance claims |
-| Receptionist | Appointments, patient registration |
+Haset HMS is a complete hospital management platform that handles the full patient journey — from the moment a patient walks in to the moment they are discharged. Every department works from the same system in real time, eliminating paper, reducing errors, and speeding up care.
 
 ---
 
-## Local Development
+## How It Works
 
-### Requirements
-- PHP 8.2+
-- Composer
-- Node.js 18+
-- MySQL
+A patient moves through the hospital in a structured workflow:
 
-### Backend setup
-
-```bash
-cd backend
-composer install
-cp .env.example .env        # or create .env manually
-php artisan key:generate
-php artisan migrate --force
-php artisan db:seed --force
-php artisan serve
+```
+Reception → Nurse → Doctor → Lab / Pharmacy / Nurse → Billing → Discharge
 ```
 
-### Frontend setup
-
-```bash
-npm install
-npm run dev
-```
-
-Frontend runs on `http://localhost:5173`, backend on `http://localhost:8000`.
+Each department sees only their queue. When one stage is done, the patient automatically moves to the next. Multiple departments can work on the same patient at the same time.
 
 ---
 
-## Default Login Credentials (local)
+## What Each Department Can Do
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@test.com | admin123 |
-| Doctor | doctor@test.com | doctor123 |
-| Lab | lab@test.com | lab123 |
+### 🏢 Reception
+- Register new patients (cash or insurance)
+- Book appointments with doctors
+- Check in returning patients
+- View all insurance patients and their claim history
+- Insurance patients are registered for free — the fee goes to the insurance company
 
----
+### 💉 Nurse
+- Record patient vitals (blood pressure, temperature, weight, height, SpO₂, etc.)
+- Complete doctor-ordered procedures and nursing services
+- Order lab tests for direct lab patients
+- View and print lab reports
 
-## ICD-10 Integration
+### 🩺 Doctor
+Full structured consultation form with:
+1. **Patient History** — previous visits, lab tests, prescriptions from the system
+2. **Clinical History** — chief complaint, history of present illness, review of systems, past medical & surgical history, obstetric history, family & social history, developmental milestones, vaccination history, nutrition history, on examination
+3. **Provisional Diagnosis** — working diagnosis with ICD-10 code
+4. **Investigation** — order lab tests, view results when they return
+5. **Final Diagnosis** — confirmed diagnosis with ICD-10 code
+6. **Treatment** — prescribe medications (sent to pharmacy), order procedures (sent to nurse)
+7. **Other Management** — follow-up, referrals, patient education
 
-The system supports full ICD-10 diagnosis coding used by doctors during consultations and automatically included in insurance claim submissions.
+### 🔬 Lab
+- Receive lab test orders from doctors
+- Enter test results with values, units, and normal ranges
+- Mark tests as completed — results appear instantly in the doctor's consultation
 
-### Load ICD-10 codes
+### 💊 Pharmacy
+- Receive prescriptions from doctors
+- Dispense medications with dosage verification
+- Manage medication inventory and stock levels
+- Low stock alerts with restock tracking
+- Walk-in medication dispensing
 
-**Option 1 — Download full dataset (94k codes, requires internet):**
-```bash
-php artisan icd10:download
-```
+### 💰 Billing
+- Generate invoices for all services
+- Accept cash and mobile money payments (M-Pesa, Airtel, Tigo, Halopesa)
+- Manage insurance claims — approve, reject, or mark as paid
+- View daily and monthly financial reports
 
-**Option 2 — Tanzania QRC codes only:**
-```bash
-php artisan db:seed --class=TanzaniaICD10Seeder --force
-```
-
-**Option 3 — Upload via Admin Dashboard:**
-Go to Admin → ICD-10 Code Database → upload a CSV, Excel, or PDF file.
-
-### How it works
-- Doctors search codes by name or code (e.g. `malaria`, `J18`) during consultation
-- Codes attach to both provisional and final diagnosis on the visit record
-- Insurance claims automatically include the ICD-10 code in the NHIF API payload
-
----
-
-## Production Deployment
-
-### Files to upload after changes
-```
-backend/app/
-backend/routes/api.php
-backend/database/migrations/
-backend/bootstrap/app.php
-dist/                        # built frontend
-```
-
-### After uploading backend changes
-```bash
-php artisan migrate --force
-php artisan config:clear
-php artisan route:clear
-php artisan cache:clear
-```
-
-### Build frontend for production
-```bash
-npm run build
-```
-
-Upload the `dist/` folder to `public_html/`.
+### ⚙️ Admin
+- Manage system users and roles
+- Configure consultation fees and department fees
+- Import ICD-10 diagnosis codes
+- View full activity logs
+- Generate patient and financial reports
+- Manage hospital settings (name, logo, contact info)
 
 ---
 
-## Key Features
+## Insurance Support
 
-- Patient registration and medical history
-- Appointment booking and workflow (Reception → Nurse → Doctor → Lab → Pharmacy → Billing)
-- Doctor consultation with ICD-10 diagnosis coding and autofill from previous visits
-- Lab test ordering and results
-- Prescription management and pharmacy dispensing
-- Invoice generation and payment processing (cash, mobile money via ZenoPay)
-- Insurance claims with NHIF Tanzania API integration
-- Admin reports and activity logs
-- Real-time updates via Socket.io
+The system fully supports insured patients:
 
+- Patient is registered with their insurance company and card number
+- Consultation fee is waived — billed directly to the insurance company
+- An insurance claim is automatically created on registration
+- Billing staff can approve, reject, or mark claims as paid from the billing dashboard
+- All claims include the ICD-10 diagnosis code from the doctor's consultation
+
+Supported insurers include NHIF, AAR, Jubilee, Strategis, Resolution, Britam, Sanlam, and Phoenix of Tanzania.
+
+---
+
+## ICD-10 Diagnosis Coding
+
+Every diagnosis in the system is linked to an international ICD-10 code. Doctors search by name or code (e.g. `malaria`, `B54`) during consultation. Codes are stored on the patient record and automatically included in insurance claims.
+
+---
+
+## Payments
+
+The system accepts:
+- **Cash** — recorded at billing
+- **Mobile Money** — M-Pesa, Airtel Money, Tigo Pesa, Halopesa via ZenoPay
+- **Insurance** — billed to the patient's insurance company
+
+---
+
+## Live System
+
+The system is live at **[hasetcompany.or.tz](https://hasetcompany.or.tz)**
+
+---
+
+<div align="center">
+<sub>Haset Company · Tanzania · 2026</sub>
+</div>
