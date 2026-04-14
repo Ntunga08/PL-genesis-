@@ -2,61 +2,89 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Soneso\StellarSDK\Asset;
+use Soneso\StellarSDK\KeyPair;
+use Soneso\StellarSDK\ManageDataOperationBuilder;
+use Soneso\StellarSDK\Memo;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\PaymentOperationBuilder;
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\TransactionBuilder;
 
 /**
  * StellarService
  *
- * Interacts with the Stellar Horizon REST API to:
- *  - Store CID hashes on-chain via transaction memo
- *  - Verify CID hashes by querying transaction history
- *  - Submit payment transactions between wallets
- *
- * Uses the Stellar Horizon HTTP API directly (no PHP SDK dependency required).
- * For production, consider adding stellar/sdk via composer.
+ * Uses soneso/stellar-php-sdk to:
+ *  - Anchor CID hashes on Stellar via ManageData operations
+ *  - Verify CID hashes by querying account data entries on Horizon
+ *  - Submit XLM payment transactions between wallets
  */
 class StellarService
 {
+    private StellarSDK $sdk;
+    private Network $network;
     private string $horizonUrl;
     private string $hospitalPublicKey;
     private string $hospitalSecretKey;
-    private string $memoPrefix;
-    private string $network;
 
     public function __construct()
     {
-        $this->horizonUrl        = config('stellar.horizon_url');
+        $this->horizonUrl       = config('stellar.horizon_url');
         $this->hospitalPublicKey = config('stellar.hospital_public_key', '');
         $this->hospitalSecretKey = config('stellar.hospital_secret_key', '');
-        $this->memoPrefix        = config('stellar.memo_prefix', 'HMS_CID:');
-        $this->network           = config('stellar.network', 'testnet');
+
+        $networkName = config('stellar.network', 'testnet');
+        $this->network = $networkName === 'mainnet' ? Network::public() : Network::testnet();
+
+        $this->sdk = new StellarSDK($this->horizonUrl);
     }
 
     /**
-     * Store a CID hash on the Stellar blockchain.
-     * Submits a minimal XLM self-payment with the CID in the memo field.
+     * Anchor a CID hash on Stellar using a ManageData operation.
+     * The CID is stored as an account data entry: key = "HMS_CID", value = sha256(cid).
      *
-     * @param  string  $cid
-     * @return string  Transaction hash
+     * @param  string  $cid  IPFS Content Identifier
+     * @return string  Stellar transaction hash
      */
     public function storeCidHash(string $cid): string
     {
         $this->assertKeysConfigured();
 
-        $memo = $this->memoPrefix . $cid;
+        $keyPair    = KeyPair::fromSeed($this->hospitalSecretKey);
+        $account    = $this->sdk->requestAccount($this->hospitalPublicKey);
 
-        // Memo text is limited to 28 bytes on Stellar; use hash memo for full CIDs
-        $txHash = $this->submitMemoTransaction($memo);
+        // Store SHA-256 of CID as a 32-byte data entry (Stellar data value limit is 64 bytes)
+        $dataKey   = 'HMS_CID_' . substr($cid, 0, 24); // keep key ≤ 64 chars
+        $dataValue = hash('sha256', $cid, true);        // raw 32 bytes
 
-        Log::info('StellarService: CID stored on chain', ['cid' => $cid, 'tx' => $txHash]);
+        $operation = (new ManageDataOperationBuilder($dataKey, $dataValue))->build();
+
+        $transaction = (new TransactionBuilder($account))
+            ->addOperation($operation)
+            ->addMemo(Memo::text('HMS:' . substr($cid, 0, 24)))
+            ->build();
+
+        $transaction->sign($keyPair, $this->network);
+
+        $response = $this->sdk->submitTransaction($transaction);
+
+        if (! $response->isSuccessful()) {
+            $extras = $response->getExtras();
+            $detail = $extras ? json_encode($extras->getResultCodes()) : 'unknown error';
+            throw new RuntimeException("Stellar storeCidHash failed: {$detail}");
+        }
+
+        $txHash = $response->getHash();
+
+        Log::info('StellarService: CID anchored on chain', ['cid' => $cid, 'tx' => $txHash]);
 
         return $txHash;
     }
 
     /**
-     * Verify that a CID exists on the Stellar blockchain.
+     * Verify a CID exists on Stellar by checking the account's data entries.
      *
      * @param  string  $cid
      * @return bool
@@ -65,38 +93,59 @@ class StellarService
     {
         $this->assertKeysConfigured();
 
-        $memo   = $this->memoPrefix . $cid;
-        $txList = $this->fetchAccountTransactions($this->hospitalPublicKey);
+        try {
+            $account  = $this->sdk->requestAccount($this->hospitalPublicKey);
+            $dataKey  = 'HMS_CID_' . substr($cid, 0, 24);
+            $expected = base64_encode(hash('sha256', $cid, true));
 
-        foreach ($txList as $tx) {
-            if (isset($tx['memo']) && $tx['memo'] === $memo) {
-                return true;
-            }
-            // Also check hash memo (SHA-256 of CID)
-            if (isset($tx['memo_type']) && $tx['memo_type'] === 'hash') {
-                $cidHash = base64_encode(hash('sha256', $cid, true));
-                if ($tx['memo'] === $cidHash) {
-                    return true;
-                }
-            }
+            $storedValue = $account->getData()->get($dataKey);
+
+            return $storedValue !== null && $storedValue === $expected;
+        } catch (\Throwable $e) {
+            Log::warning('StellarService: verifyCid error', ['error' => $e->getMessage()]);
+            return false;
         }
-
-        return false;
     }
 
     /**
-     * Submit a payment transaction on Stellar.
+     * Send an XLM payment on Stellar.
      *
      * @param  string  $destinationPublicKey
-     * @param  string  $amount  Amount in XLM (or token units)
-     * @param  string  $memo    Optional memo
+     * @param  string  $amount  Amount in XLM
+     * @param  string  $memo    Optional text memo (max 28 bytes)
      * @return string  Transaction hash
      */
     public function sendPayment(string $destinationPublicKey, string $amount, string $memo = ''): string
     {
         $this->assertKeysConfigured();
 
-        $txHash = $this->submitPaymentTransaction($destinationPublicKey, $amount, $memo);
+        $keyPair   = KeyPair::fromSeed($this->hospitalSecretKey);
+        $account   = $this->sdk->requestAccount($this->hospitalPublicKey);
+
+        $operation = (new PaymentOperationBuilder(
+            $destinationPublicKey,
+            Asset::native(),
+            $amount
+        ))->build();
+
+        $builder = (new TransactionBuilder($account))->addOperation($operation);
+
+        if ($memo !== '') {
+            $builder->addMemo(Memo::text(substr($memo, 0, 28)));
+        }
+
+        $transaction = $builder->build();
+        $transaction->sign($keyPair, $this->network);
+
+        $response = $this->sdk->submitTransaction($transaction);
+
+        if (! $response->isSuccessful()) {
+            $extras = $response->getExtras();
+            $detail = $extras ? json_encode($extras->getResultCodes()) : 'unknown error';
+            throw new RuntimeException("Stellar payment failed: {$detail}");
+        }
+
+        $txHash = $response->getHash();
 
         Log::info('StellarService: payment sent', [
             'destination' => $destinationPublicKey,
@@ -108,109 +157,28 @@ class StellarService
     }
 
     /**
-     * Get account details from Horizon.
-     *
-     * @param  string  $publicKey
-     * @return array
+     * Get raw account details from Horizon.
      */
     public function getAccount(string $publicKey): array
     {
-        $response = Http::get("{$this->horizonUrl}/accounts/{$publicKey}");
-
-        if (! $response->successful()) {
-            throw new RuntimeException("Stellar account not found: {$publicKey}");
-        }
-
-        return $response->json();
+        $account = $this->sdk->requestAccount($publicKey);
+        return [
+            'id'       => $account->getAccountId(),
+            'sequence' => $account->getSequenceNumber(),
+            'balances' => array_map(fn($b) => [
+                'asset'   => $b->getAssetType() === 'native' ? 'XLM' : $b->getAssetCode(),
+                'balance' => $b->getBalance(),
+            ], $account->getBalances()->toArray()),
+        ];
     }
 
-    // ─── Private Helpers ────────────────────────────────────────────────────
-
-    /**
-     * Build and submit a transaction with a text memo (self-payment of 0.0000001 XLM).
-     * This is the standard pattern for anchoring data on Stellar.
-     *
-     * NOTE: Full transaction signing requires the Stellar SDK or a signing service.
-     * This implementation calls a signing microservice or uses the Stellar Laboratory
-     * pattern. For production, integrate stellar/sdk via composer.
-     */
-    private function submitMemoTransaction(string $memo): string
-    {
-        // In a real deployment this would use the Stellar PHP SDK to:
-        // 1. Load account sequence number
-        // 2. Build TransactionBuilder with ManageDataOperation or PaymentOperation
-        // 3. Sign with hospitalSecretKey
-        // 4. Submit XDR envelope to Horizon
-
-        // For now we call a local signing helper endpoint or return a simulated hash
-        // Replace this block with actual SDK calls when stellar/sdk is installed.
-        return $this->signAndSubmit([
-            'type'        => 'memo',
-            'memo'        => $memo,
-            'source'      => $this->hospitalPublicKey,
-            'secret'      => $this->hospitalSecretKey,
-            'network'     => $this->network,
-            'horizon_url' => $this->horizonUrl,
-        ]);
-    }
-
-    private function submitPaymentTransaction(string $destination, string $amount, string $memo): string
-    {
-        return $this->signAndSubmit([
-            'type'        => 'payment',
-            'destination' => $destination,
-            'amount'      => $amount,
-            'memo'        => $memo,
-            'source'      => $this->hospitalPublicKey,
-            'secret'      => $this->hospitalSecretKey,
-            'network'     => $this->network,
-            'horizon_url' => $this->horizonUrl,
-        ]);
-    }
-
-    /**
-     * Delegates transaction signing to the Stellar signing microservice.
-     * Set STELLAR_SIGNER_URL in .env to point to your signing service.
-     * Falls back to a stub hash for local development.
-     */
-    private function signAndSubmit(array $payload): string
-    {
-        $signerUrl = env('STELLAR_SIGNER_URL');
-
-        if ($signerUrl) {
-            $response = Http::timeout(15)->post("{$signerUrl}/sign-and-submit", $payload);
-
-            if (! $response->successful()) {
-                throw new RuntimeException('Stellar signer error: ' . $response->body());
-            }
-
-            return $response->json('tx_hash');
-        }
-
-        // Development stub — replace with real SDK integration
-        Log::warning('StellarService: STELLAR_SIGNER_URL not set, returning stub tx hash');
-        return 'stub_tx_' . hash('sha256', json_encode($payload) . microtime());
-    }
-
-    private function fetchAccountTransactions(string $publicKey): array
-    {
-        $response = Http::get("{$this->horizonUrl}/accounts/{$publicKey}/transactions", [
-            'limit' => 200,
-            'order' => 'desc',
-        ]);
-
-        if (! $response->successful()) {
-            return [];
-        }
-
-        return $response->json('_embedded.records', []);
-    }
+    // ─── Private ────────────────────────────────────────────────────────────
 
     private function assertKeysConfigured(): void
     {
         if (empty($this->hospitalPublicKey) || empty($this->hospitalSecretKey)) {
             throw new RuntimeException(
-                'Stellar hospital keys not configured. Set STELLAR_HOSPITAL_PUBLIC_KEY and STELLAR_HOSPITAL_SECRET_KEY in .env'
+                'Stellar keys not configured. Set STELLAR_HOSPITAL_PUBLIC_KEY and STELLAR_HOSPITAL_SECRET_KEY in .env'
             );
         }
     }
