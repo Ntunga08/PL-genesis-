@@ -1177,3 +1177,30 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['success' => true, 'appointment' => $appointment]);
     });
 });
+
+// ─── Decentralized HMS: IPFS + Stellar + Soroban ────────────────────────────
+use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\IpfsController;
+use App\Http\Controllers\StellarController;
+use App\Http\Controllers\SorobanController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Medical Records
+    Route::post('/records/create',       [MedicalRecordController::class, 'create']);
+    Route::get('/records/{patient_id}',  [MedicalRecordController::class, 'getByPatient']);
+    Route::post('/records/upload-ipfs',  [MedicalRecordController::class, 'uploadFile']);
+
+    // IPFS
+    Route::post('/ipfs/upload',          [IpfsController::class, 'upload']);
+    Route::get('/ipfs/{cid}',            [IpfsController::class, 'retrieve']);
+
+    // Stellar
+    Route::post('/stellar/store-hash',   [StellarController::class, 'storeHash']);
+    Route::post('/stellar/payment',      [StellarController::class, 'payment']);
+    Route::get('/stellar/verify/{cid}',  [StellarController::class, 'verify']);
+
+    // Soroban Smart Contracts
+    Route::post('/contract/insurance-check',  [SorobanController::class, 'insuranceCheck']);
+    Route::post('/contract/release-payment',  [SorobanController::class, 'releasePayment']);
+});
