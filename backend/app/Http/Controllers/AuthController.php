@@ -3,111 +3,90 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AccountService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function __construct(private readonly AccountService $account) {}
+
+    /**
+     * POST /api/auth/login
+     */
+    public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
-        if (!$user->is_active) {
-            return response()->json(['error' => 'Account is inactive'], 403);
+        if (! $user->is_active) {
+            return response()->json(['error' => 'Account is inactive. Contact your administrator.'], 403);
         }
+
+        $user->update(['last_login_at' => now()]);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'phone' => $user->phone,
-            ]
+            'user'  => $this->account->formatUser($user),
         ]);
     }
 
-    public function register(Request $request)
+    /**
+     * POST /api/auth/register
+     * Accepts optional generate_wallet=true to auto-create a Stellar keypair.
+     */
+    public function register(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'phone' => 'nullable|string|max:20',
-            'role' => 'required|in:admin,doctor,nurse,receptionist,pharmacist,lab_technician,lab_tech,billing,patient',
+            'name'              => 'required|string|max:255',
+            'email'             => 'required|email|unique:users',
+            'password'          => 'required|string|min:8|confirmed',
+            'phone'             => 'nullable|string|max:20',
+            'role'              => 'required|in:admin,doctor,nurse,receptionist,pharmacist,lab_technician,lab_tech,billing,patient',
+            'generate_wallet'   => 'nullable|boolean',
         ]);
 
-        // Normalize lab_tech to lab_technician for database consistency
-        $role = $request->role === 'lab_tech' ? 'lab_technician' : $request->role;
+        $result = $this->account->register($request->only(
+            'name', 'email', 'password', 'phone', 'role', 'generate_wallet'
+        ));
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'phone' => $request->phone,
-            'role' => $role,
-            'is_active' => true,
-        ]);
-
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-            ]
-        ], 201);
+        return response()->json($result, 201);
     }
 
-    public function logout(Request $request)
+    /**
+     * POST /api/auth/logout
+     */
+    public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
-
-        return response()->json(['message' => 'Logged out successfully']);
+        return response()->json(['message' => 'Logged out successfully.']);
     }
 
-    public function me(Request $request)
+    /**
+     * GET /api/auth/me
+     */
+    public function me(Request $request): JsonResponse
     {
-        try {
-            $user = $request->user();
+        $user = $request->user();
 
-            if (!$user) {
-                return response()->json(['error' => 'Unauthenticated'], 401);
-            }
-
-            return response()->json([
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'full_name' => $user->full_name ?? $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'phone' => $user->phone,
-                    'is_active' => $user->is_active,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Auth me error: ' . $e->getMessage());
-            return response()->json(['error' => 'Authentication error: ' . $e->getMessage()], 500);
+        if (! $user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
+
+        return response()->json(['user' => $this->account->formatUser($user)]);
     }
 }

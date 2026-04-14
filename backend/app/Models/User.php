@@ -20,19 +20,30 @@ class User extends Authenticatable
         'role',
         'department_id',
         'is_active',
+        'stellar_public_key',
+        'stellar_encrypted_secret',
+        'avatar_url',
+        'specialization',
+        'last_login_at',
+        'password_reset_token',
+        'password_reset_expires_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'stellar_encrypted_secret',  // never expose encrypted secret in API responses
+        'password_reset_token',
     ];
 
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
+            'email_verified_at'           => 'datetime',
+            'password'                    => 'hashed',
+            'is_active'                   => 'boolean',
+            'last_login_at'               => 'datetime',
+            'password_reset_expires_at'   => 'datetime',
         ];
     }
 

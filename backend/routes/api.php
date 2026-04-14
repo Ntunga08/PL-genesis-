@@ -1213,3 +1213,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/bridge/rate',                  [BridgeController::class, 'getRate']);
     Route::get('/bridge/convert',               [BridgeController::class, 'convert']);
 });
+
+// ─── Account Management ──────────────────────────────────────────────────────
+use App\Http\Controllers\AccountController;
+
+// Public (no auth)
+Route::post('/account/forgot-password', [AccountController::class, 'forgotPassword']);
+Route::post('/account/reset-password',  [AccountController::class, 'resetPassword']);
+
+// Protected
+Route::middleware('auth:sanctum')->group(function () {
+    // Profile
+    Route::get('/account/profile',          [AccountController::class, 'profile']);
+    Route::put('/account/profile',          [AccountController::class, 'updateProfile']);
+
+    // Password
+    Route::post('/account/change-password', [AccountController::class, 'changePassword']);
+
+    // Stellar Wallet
+    Route::post('/account/wallet/generate', [AccountController::class, 'generateWallet']);
+    Route::post('/account/wallet/link',     [AccountController::class, 'linkWallet']);
+    Route::post('/account/wallet/export',   [AccountController::class, 'exportWallet']);
+    Route::delete('/account/wallet',        [AccountController::class, 'removeWallet']);
+
+    // Account
+    Route::delete('/account',               [AccountController::class, 'deactivate']);
+});
