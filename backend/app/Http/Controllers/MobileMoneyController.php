@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MobilePayment;
+use App\Services\FiatToStellarBridgeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
@@ -143,6 +144,27 @@ class MobileMoneyController extends Controller
             'provider_response' => json_encode($request->all()),
             'completed_at' => $newStatus === 'completed' ? now() : null,
         ]);
+
+        // ── Bridge confirmed fiat payment to Stellar ───────────────────────
+        if ($newStatus === 'completed' && $payment->patient_id) {
+            try {
+                // MobilePayment doesn't extend Payment model, so we find or create
+                // a matching Payment record to bridge
+                $fiatPayment = \App\Models\Payment::where('reference_number', $payment->reference_number)->first();
+                if ($fiatPayment) {
+                    $bridge = app(FiatToStellarBridgeService::class);
+                    $bridgeResult = $bridge->bridgePayment($fiatPayment, [
+                        'insurance_number' => $request->input('insurance_number'),
+                        'doctor_approved'  => $request->boolean('doctor_approved'),
+                        'cid'              => $request->input('cid'),
+                    ]);
+                    Log::info('MobileMoney: fiat→Stellar bridge completed', $bridgeResult);
+                }
+            } catch (\Throwable $e) {
+                Log::error('MobileMoney: fiat→Stellar bridge failed', ['error' => $e->getMessage()]);
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────
 
         return response()->json(['message' => 'Callback processed'], 200);
     }

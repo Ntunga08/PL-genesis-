@@ -1204,3 +1204,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/contract/insurance-check',  [SorobanController::class, 'insuranceCheck']);
     Route::post('/contract/release-payment',  [SorobanController::class, 'releasePayment']);
 });
+
+// ─── Fiat → Stellar Bridge ───────────────────────────────────────────────────
+use App\Http\Controllers\BridgeController;
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/bridge/payment/{payment_id}', [BridgeController::class, 'bridgePayment']);
+    Route::get('/bridge/rate',                  [BridgeController::class, 'getRate']);
+    Route::get('/bridge/convert',               [BridgeController::class, 'convert']);
+});

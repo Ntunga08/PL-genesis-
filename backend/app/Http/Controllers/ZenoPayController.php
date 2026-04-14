@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Invoice;
+use App\Services\FiatToStellarBridgeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -380,6 +381,21 @@ class ZenoPayController extends Controller
                 $payment->status = 'Completed';
                 $payment->notes = 'Payment completed via ZenoPay';
                 $payment->save();
+
+                // ── Bridge fiat payment to Stellar blockchain ──────────────
+                try {
+                    $bridge = app(FiatToStellarBridgeService::class);
+                    $bridgeResult = $bridge->bridgePayment($payment, [
+                        'insurance_number' => $data['metadata']['insurance_number'] ?? null,
+                        'doctor_approved'  => $data['metadata']['doctor_approved'] ?? false,
+                        'cid'              => $data['metadata']['cid'] ?? null,
+                    ]);
+                    Log::info('ZenoPay: fiat→Stellar bridge completed', $bridgeResult);
+                } catch (\Throwable $e) {
+                    // Bridge failure must NOT block the fiat payment confirmation
+                    Log::error('ZenoPay: fiat→Stellar bridge failed', ['error' => $e->getMessage()]);
+                }
+                // ───────────────────────────────────────────────────────────
 
                 // Update invoice
                 if ($payment->invoice_id) {

@@ -29,6 +29,14 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(MedicalRecordRepository::class),
             );
         });
+
+        $this->app->singleton(\App\Services\FiatToStellarBridgeService::class, function ($app) {
+            return new \App\Services\FiatToStellarBridgeService(
+                $app->make(StellarService::class),
+                $app->make(SorobanService::class),
+                $app->make(MedicalRecordRepository::class),
+            );
+        });
     }
 
     /**
