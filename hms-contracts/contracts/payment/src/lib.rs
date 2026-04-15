@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short,
-    token, Address, Env, String, Symbol,
+    Address, Env, String, Symbol,
 };
 
 const PAYMENT_KEY: Symbol = symbol_short!("PAY");
@@ -20,10 +20,7 @@ pub struct PaymentContract;
 #[contractimpl]
 impl PaymentContract {
     /// Release payment to hospital wallet.
-    /// Called by HMS backend after insurance + CID + doctor approval verified.
-    ///
-    /// In production: integrate with Stellar token contract for actual transfer.
-    /// Here we record the release on-chain and emit an event.
+    /// Records the release on-chain and emits an audit event.
     pub fn release_payment(
         env: Env,
         patient_id: String,
@@ -31,7 +28,6 @@ impl PaymentContract {
         destination_wallet: Address,
         amount: i128,
     ) -> bool {
-        // Record the payment release
         let key = (PAYMENT_KEY, cid.clone());
         let record = PaymentRecord {
             patient_id: patient_id.clone(),
@@ -41,7 +37,6 @@ impl PaymentContract {
         };
         env.storage().persistent().set(&key, &record);
 
-        // Emit event for audit trail
         env.events().publish(
             (symbol_short!("pay_rel"), patient_id),
             (cid, amount, destination_wallet),
