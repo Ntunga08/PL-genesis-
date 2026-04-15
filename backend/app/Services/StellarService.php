@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Soneso\StellarSDK\Asset;
-use Soneso\StellarSDK\KeyPair;
+use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\ManageDataOperationBuilder;
 use Soneso\StellarSDK\Memo;
 use Soneso\StellarSDK\Network;
@@ -183,3 +183,4 @@ class StellarService
         }
     }
 }
+

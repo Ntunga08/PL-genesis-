@@ -141,6 +141,11 @@ class MedicalRecordService
 
         $params['stellar_tx_hash'] = $record->stellar_tx_hash;
 
+        // Guard: doctor approval is checked here so it's enforced even when Soroban is mocked
+        if (empty($params['doctor_approved'])) {
+            throw new RuntimeException('Smart contract rejected: doctor approval not confirmed.');
+        }
+
         // Soroban smart contract handles all validation + payment release
         $paymentTxHash = $this->soroban->releasePayment($params);
 
@@ -179,3 +184,4 @@ class MedicalRecordService
         }
     }
 }
+

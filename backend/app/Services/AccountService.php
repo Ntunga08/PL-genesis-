@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use RuntimeException;
-use Soneso\StellarSDK\KeyPair;
+use Soneso\StellarSDK\Crypto\KeyPair;
 
 /**
  * AccountService
@@ -378,3 +378,4 @@ class AccountService
         ];
     }
 }
+

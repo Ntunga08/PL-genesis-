@@ -192,3 +192,4 @@ class IpfsService
         return $client;
     }
 }
+

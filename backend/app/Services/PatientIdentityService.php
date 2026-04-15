@@ -10,7 +10,7 @@ use App\Repositories\MedicalRecordRepository;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
-use Soneso\StellarSDK\KeyPair;
+use Soneso\StellarSDK\Crypto\KeyPair;
 
 /**
  * PatientIdentityService
@@ -342,3 +342,4 @@ class PatientIdentityService
         }
     }
 }
+

@@ -11,7 +11,8 @@ class Payment extends Model
 
     protected $fillable = [
         'patient_id', 'invoice_id', 'amount', 'payment_method',
-        'payment_type', 'status', 'payment_date', 'reference_number', 'notes'
+        'payment_type', 'status', 'payment_date', 'reference_number', 'notes',
+        'stellar_tx_hash', 'xlm_amount', 'bridge_status',
     ];
 
     protected $casts = [

@@ -190,3 +190,4 @@ class FiatToStellarBridgeService
         return $record?->cid_hash ?? null;
     }
 }
+

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Patient extends Model
 {
-    use HasUuids;
+    use HasUuids, HasFactory;
 
     protected $fillable = [
         'full_name', 'date_of_birth', 'gender', 'phone', 'email',

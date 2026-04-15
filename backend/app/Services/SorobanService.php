@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Soneso\StellarSDK\InvokeContractHostFunction;
 use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
-use Soneso\StellarSDK\KeyPair;
+use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\Soroban\Responses\GetTransactionResponse;
 use Soneso\StellarSDK\Soroban\Responses\SendTransactionResponse;
@@ -342,3 +342,4 @@ class SorobanService
         }
     }
 }
+
