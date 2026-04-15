@@ -106,21 +106,36 @@ DB_PASSWORD=your_password
 
 Medical records are AES-256 encrypted before upload. Only the CID hash is stored in the database.
 
-**Option A — Infura (recommended)**
+**Option A — Pinata (recommended, free tier)**
+
+1. Sign up at [pinata.cloud](https://pinata.cloud)
+2. Go to **API Keys** → **New Key** → enable `pinFileToIPFS`
+3. Copy the **API Key** and **API Secret** (or use the JWT token)
+
+```env
+IPFS_DRIVER=pinata
+IPFS_PINATA_JWT=your_jwt_token          # recommended
+# OR use key + secret:
+IPFS_PINATA_API_KEY=your_api_key
+IPFS_PINATA_API_SECRET=your_api_secret
+IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
+```
+
+**Option B — Infura (legacy)**
 
 1. Sign up at [app.infura.io](https://app.infura.io)
-2. Create a new project → select **IPFS**
-3. Copy your Project ID and Project Secret
+2. Create a project → select any network (e.g. Ethereum)
+3. Copy the **API Key** (Project ID) and **API Key Secret**
 
 ```env
 IPFS_DRIVER=infura
-IPFS_INFURA_PROJECT_ID=your_project_id
-IPFS_INFURA_PROJECT_SECRET=your_project_secret
+IPFS_INFURA_PROJECT_ID=your_api_key
+IPFS_INFURA_PROJECT_SECRET=your_api_key_secret
 IPFS_INFURA_ENDPOINT=https://ipfs.infura.io:5001
 IPFS_GATEWAY=https://ipfs.io/ipfs
 ```
 
-**Option B — Local IPFS node**
+**Option C — Local IPFS node**
 
 ```bash
 # Install IPFS Desktop or run daemon

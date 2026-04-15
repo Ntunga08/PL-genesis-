@@ -10,39 +10,53 @@ use RuntimeException;
  * IpfsService
  *
  * Handles AES-256 encryption of medical data and upload/retrieval
- * to/from IPFS via Infura or a local node.
+ * to/from IPFS.
+ *
+ * Supports three drivers:
+ *   - pinata  (recommended — free tier, no project ID needed)
+ *   - infura  (legacy — requires project_id + project_secret)
+ *   - local   (local IPFS daemon)
  *
  * IMPORTANT: Raw medical data is NEVER stored in the database or blockchain.
  * Only the IPFS CID is persisted.
  */
 class IpfsService
 {
-    private string $endpoint;
-    private string $gateway;
-    private ?string $projectId;
-    private ?string $projectSecret;
+    private string  $driver;
+    private string  $gateway;
+    private ?string $pinataApiKey;
+    private ?string $pinataApiSecret;
+    private ?string $pinataJwt;
+    private ?string $infuraProjectId;
+    private ?string $infuraProjectSecret;
+    private ?string $infuraEndpoint;
+    private ?string $localEndpoint;
 
     public function __construct()
     {
-        $driver = config('ipfs.driver', 'infura');
+        $this->driver = config('ipfs.driver', 'pinata');
 
-        if ($driver === 'infura') {
-            $this->endpoint      = config('ipfs.infura.endpoint');
-            $this->gateway       = config('ipfs.infura.gateway');
-            $this->projectId     = config('ipfs.infura.project_id');
-            $this->projectSecret = config('ipfs.infura.project_secret');
-        } else {
-            $this->endpoint      = config('ipfs.local.endpoint');
-            $this->gateway       = config('ipfs.local.gateway');
-            $this->projectId     = null;
-            $this->projectSecret = null;
-        }
+        // Pinata
+        $this->pinataApiKey    = config('ipfs.pinata.api_key');
+        $this->pinataApiSecret = config('ipfs.pinata.api_secret');
+        $this->pinataJwt       = config('ipfs.pinata.jwt');
+
+        // Infura (legacy)
+        $this->infuraEndpoint      = config('ipfs.infura.endpoint');
+        $this->infuraProjectId     = config('ipfs.infura.project_id');
+        $this->infuraProjectSecret = config('ipfs.infura.project_secret');
+
+        // Local
+        $this->localEndpoint = config('ipfs.local.endpoint');
+
+        // Gateway (for retrieval)
+        $this->gateway = config('ipfs.gateway', 'https://gateway.pinata.cloud/ipfs');
     }
 
     /**
      * Encrypt data with AES-256-CBC and upload to IPFS.
      *
-     * @param  string|array  $data  Raw medical data (string or array serialized to JSON)
+     * @param  string|array  $data
      * @return array{cid: string, key_ref: string}
      */
     public function encryptAndUpload(string|array $data): array
@@ -53,17 +67,13 @@ class IpfsService
 
         $cid = $this->uploadToIpfs($encrypted);
 
-        Log::info('IpfsService: uploaded encrypted record', ['cid' => $cid]);
+        Log::info('IpfsService: uploaded encrypted record', ['cid' => $cid, 'driver' => $this->driver]);
 
         return ['cid' => $cid, 'key_ref' => $keyRef];
     }
 
     /**
      * Upload a raw file (already encrypted externally) to IPFS.
-     *
-     * @param  string  $encryptedContent  Binary or base64 content
-     * @param  string  $filename
-     * @return string  CID
      */
     public function uploadFile(string $encryptedContent, string $filename = 'record'): string
     {
@@ -72,15 +82,12 @@ class IpfsService
 
     /**
      * Retrieve content from IPFS by CID.
-     *
-     * @param  string  $cid
-     * @return string  Raw (encrypted) content
      */
     public function retrieve(string $cid): string
     {
         $url = "{$this->gateway}/{$cid}";
 
-        $response = $this->buildHttpClient()->get($url);
+        $response = Http::timeout(30)->get($url);
 
         if (! $response->successful()) {
             throw new RuntimeException("IPFS retrieve failed for CID {$cid}: " . $response->status());
@@ -91,11 +98,6 @@ class IpfsService
 
     /**
      * Decrypt AES-256-CBC content using a stored key reference.
-     * In production, key_ref should point to a KMS or Vault secret.
-     *
-     * @param  string  $encryptedContent
-     * @param  string  $keyRef  Base64-encoded key:iv pair (for demo; use KMS in production)
-     * @return string  Plaintext
      */
     public function decryptContent(string $encryptedContent, string $keyRef): string
     {
@@ -116,19 +118,109 @@ class IpfsService
         return $decrypted;
     }
 
-    // ─── Private Helpers ────────────────────────────────────────────────────
+    // ─── Private ────────────────────────────────────────────────────────────
+
+    private function uploadToIpfs(string $content, string $filename = 'record.enc'): string
+    {
+        return match ($this->driver) {
+            'pinata' => $this->uploadViaPinata($content, $filename),
+            'infura' => $this->uploadViaInfura($content, $filename),
+            'local'  => $this->uploadViaLocal($content, $filename),
+            default  => throw new RuntimeException("Unknown IPFS driver: {$this->driver}"),
+        };
+    }
 
     /**
-     * Encrypt plaintext with AES-256-CBC.
-     * Returns [base64_ciphertext, key_ref].
-     *
-     * NOTE: In production, store the key in AWS KMS / HashiCorp Vault.
-     * key_ref here is a base64(key:iv) for demonstration only.
+     * Upload via Pinata API.
+     * Docs: https://docs.pinata.cloud/api-reference/endpoint/ipfs/pin-file-to-ipfs
      */
+    private function uploadViaPinata(string $content, string $filename): string
+    {
+        $client = Http::timeout(30);
+
+        // Prefer JWT auth, fall back to API key + secret
+        if ($this->pinataJwt) {
+            $client = $client->withToken($this->pinataJwt);
+        } elseif ($this->pinataApiKey && $this->pinataApiSecret) {
+            $client = $client->withHeaders([
+                'pinata_api_key'        => $this->pinataApiKey,
+                'pinata_secret_api_key' => $this->pinataApiSecret,
+            ]);
+        } else {
+            throw new RuntimeException('Pinata credentials not configured. Set IPFS_PINATA_JWT or IPFS_PINATA_API_KEY + IPFS_PINATA_API_SECRET in .env');
+        }
+
+        $response = $client
+            ->attach('file', $content, $filename)
+            ->post('https://api.pinata.cloud/pinning/pinFileToIPFS');
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Pinata upload failed: ' . $response->body());
+        }
+
+        $cid = $response->json('IpfsHash');
+
+        if (empty($cid)) {
+            throw new RuntimeException('Pinata response missing IpfsHash.');
+        }
+
+        return $cid;
+    }
+
+    /**
+     * Upload via Infura IPFS API (legacy).
+     */
+    private function uploadViaInfura(string $content, string $filename): string
+    {
+        $url = "{$this->infuraEndpoint}/api/v0/add";
+
+        $client = Http::timeout(30);
+
+        if ($this->infuraProjectId && $this->infuraProjectSecret) {
+            $client = $client->withBasicAuth($this->infuraProjectId, $this->infuraProjectSecret);
+        }
+
+        $response = $client->attach('file', $content, $filename)->post($url);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Infura IPFS upload failed: ' . $response->body());
+        }
+
+        $cid = $response->json('Hash');
+
+        if (empty($cid)) {
+            throw new RuntimeException('Infura IPFS response missing Hash field.');
+        }
+
+        return $cid;
+    }
+
+    /**
+     * Upload via local IPFS daemon.
+     */
+    private function uploadViaLocal(string $content, string $filename): string
+    {
+        $url = "{$this->localEndpoint}/api/v0/add";
+
+        $response = Http::timeout(30)->attach('file', $content, $filename)->post($url);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Local IPFS upload failed: ' . $response->body());
+        }
+
+        $cid = $response->json('Hash');
+
+        if (empty($cid)) {
+            throw new RuntimeException('Local IPFS response missing Hash field.');
+        }
+
+        return $cid;
+    }
+
     private function encryptAes256(string $plaintext): array
     {
-        $key = random_bytes(32); // 256-bit key
-        $iv  = random_bytes(16); // 128-bit IV
+        $key = random_bytes(32);
+        $iv  = random_bytes(16);
 
         $ciphertext = openssl_encrypt(
             $plaintext,
@@ -142,7 +234,6 @@ class IpfsService
             throw new RuntimeException('AES-256 encryption failed.');
         }
 
-        // key_ref: base64(key . ':' . iv) — replace with KMS in production
         $keyRef = base64_encode($key . ':' . $iv);
 
         return [base64_encode($ciphertext), $keyRef];
@@ -159,37 +250,4 @@ class IpfsService
 
         return [$parts[0], $parts[1]];
     }
-
-    private function uploadToIpfs(string $content, string $filename = 'record.enc'): string
-    {
-        $url = "{$this->endpoint}/api/v0/add";
-
-        $response = $this->buildHttpClient()
-            ->attach('file', $content, $filename)
-            ->post($url);
-
-        if (! $response->successful()) {
-            throw new RuntimeException('IPFS upload failed: ' . $response->body());
-        }
-
-        $json = $response->json();
-
-        if (empty($json['Hash'])) {
-            throw new RuntimeException('IPFS response missing Hash field.');
-        }
-
-        return $json['Hash'];
-    }
-
-    private function buildHttpClient()
-    {
-        $client = Http::timeout(30);
-
-        if ($this->projectId && $this->projectSecret) {
-            $client = $client->withBasicAuth($this->projectId, $this->projectSecret);
-        }
-
-        return $client;
-    }
 }
-
