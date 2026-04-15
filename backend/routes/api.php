@@ -1239,3 +1239,23 @@ Route::middleware('auth:sanctum')->group(function () {
     // Account
     Route::delete('/account',               [AccountController::class, 'deactivate']);
 });
+
+// ─── Patient Identity & Record Sharing ──────────────────────────────────────
+use App\Http\Controllers\PatientIdentityController;
+
+// Public — doctor accesses shared records using patient's token
+Route::post('/shared-records/access', [PatientIdentityController::class, 'accessShared']);
+
+// Public — look up patient by Stellar key or share code
+Route::get('/patients/lookup/{identifier}', [PatientIdentityController::class, 'lookup']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Assign Stellar identity to a patient
+    Route::post('/patients/{id}/identity',              [PatientIdentityController::class, 'assign']);
+
+    // Access grant management (patient controls who sees their records)
+    Route::post  ('/patients/{id}/access-grants',       [PatientIdentityController::class, 'grantAccess']);
+    Route::get   ('/patients/{id}/access-grants',       [PatientIdentityController::class, 'listGrants']);
+    Route::delete('/patients/{id}/access-grants/{grantId}', [PatientIdentityController::class, 'revokeGrant']);
+    Route::delete('/patients/{id}/access-grants',       [PatientIdentityController::class, 'revokeAll']);
+});

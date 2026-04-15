@@ -13,7 +13,8 @@ class Patient extends Model
         'full_name', 'date_of_birth', 'gender', 'phone', 'email',
         'address', 'emergency_contact', 'emergency_phone', 'blood_group',
         'allergies', 'medical_history', 'insurance_provider',
-        'insurance_number', 'insurance_company_id', 'status'
+        'insurance_number', 'insurance_company_id', 'status',
+        'stellar_public_key', 'share_code', 'user_id',
     ];
 
     protected $casts = [
@@ -48,5 +49,20 @@ class Patient extends Model
     public function insuranceCompany()
     {
         return $this->belongsTo(InsuranceCompany::class);
+    }
+
+    public function medicalRecords()
+    {
+        return $this->hasMany(MedicalRecord::class);
+    }
+
+    public function accessGrants()
+    {
+        return $this->hasMany(MedicalRecordAccessGrant::class);
+    }
+
+    public function userAccount()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

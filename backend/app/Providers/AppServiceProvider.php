@@ -17,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(\App\Services\AccountService::class);
+        $this->app->singleton(\App\Services\PatientIdentityService::class);
         $this->app->singleton(IpfsService::class);
         $this->app->singleton(StellarService::class);
         $this->app->singleton(SorobanService::class);
