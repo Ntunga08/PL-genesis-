@@ -147,21 +147,15 @@ class MobileMoneyController extends Controller
 
         // ── Bridge confirmed fiat payment to Stellar ───────────────────────
         if ($newStatus === 'completed' && $payment->patient_id) {
-            try {
-                // MobilePayment doesn't extend Payment model, so we find or create
-                // a matching Payment record to bridge
-                $fiatPayment = \App\Models\Payment::where('reference_number', $payment->reference_number)->first();
-                if ($fiatPayment) {
-                    $bridge = app(FiatToStellarBridgeService::class);
-                    $bridgeResult = $bridge->bridgePayment($fiatPayment, [
-                        'insurance_number' => $request->input('insurance_number'),
-                        'doctor_approved'  => $request->boolean('doctor_approved'),
-                        'cid'              => $request->input('cid'),
-                    ]);
-                    Log::info('MobileMoney: fiat→Stellar bridge completed', $bridgeResult);
-                }
-            } catch (\Throwable $e) {
-                Log::error('MobileMoney: fiat→Stellar bridge failed', ['error' => $e->getMessage()]);
+            $fiatPayment = \App\Models\Payment::where('reference_number', $payment->reference_number)->first();
+            if ($fiatPayment) {
+                $bridge = app(FiatToStellarBridgeService::class);
+                $bridgeResult = $bridge->bridgePayment($fiatPayment, [
+                    'insurance_number' => $request->input('insurance_number'),
+                    'doctor_approved'  => $request->boolean('doctor_approved'),
+                    'cid'              => $request->input('cid'),
+                ]);
+                Log::info('MobileMoney: fiat→Stellar bridge completed', $bridgeResult);
             }
         }
         // ──────────────────────────────────────────────────────────────────

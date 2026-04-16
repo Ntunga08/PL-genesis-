@@ -19,14 +19,69 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 // ZenoPay Webhook (public - no auth required)
 Route::post('/payments/zenopay/callback', [\App\Http\Controllers\ZenoPayController::class, 'handleCallback']);
 
-// Health check
+// Health check — shows status of all services independently
 Route::get('/health', function () {
+    $status = [];
+
+    // Database (critical — system cannot run without this)
     try {
         \DB::connection()->getPdo();
-        return response()->json(['status' => 'ok', 'database' => 'connected']);
+        $status['database'] = ['status' => 'ok', 'critical' => true];
     } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'database' => 'disconnected'], 500);
+        $status['database'] = ['status' => 'error', 'critical' => true, 'error' => $e->getMessage()];
     }
+
+    // IPFS / Pinata (non-critical — records saved to DB, bridged later)
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(5)
+            ->withToken(config('ipfs.pinata.jwt'))
+            ->get('https://api.pinata.cloud/data/testAuthentication');
+        $status['ipfs'] = [
+            'status'   => $response->successful() ? 'ok' : 'error',
+            'critical' => false,
+            'note'     => 'Records still saved to DB if IPFS is down',
+        ];
+    } catch (\Exception $e) {
+        $status['ipfs'] = ['status' => 'unreachable', 'critical' => false, 'note' => 'Non-critical — system continues without IPFS'];
+    }
+
+    // Stellar Horizon (CRITICAL — medical records and payments require Stellar)
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(5)
+            ->get(config('stellar.horizon_url'));
+        $status['stellar'] = [
+            'status'   => $response->successful() ? 'ok' : 'error',
+            'critical' => true,
+            'note'     => 'Medical records and payments require Stellar',
+        ];
+    } catch (\Exception $e) {
+        $status['stellar'] = ['status' => 'unreachable', 'critical' => true, 'note' => 'CRITICAL — record creation and payments are blocked'];
+    }
+
+    // Soroban RPC (CRITICAL — insurance payments require Soroban)
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(5)
+            ->post(config('stellar.soroban_rpc_url'), ['jsonrpc' => '2.0', 'method' => 'getHealth', 'id' => 1]);
+        $status['soroban'] = [
+            'status'   => $response->successful() ? 'ok' : 'error',
+            'critical' => true,
+            'note'     => 'Insurance payment release requires Soroban',
+        ];
+    } catch (\Exception $e) {
+        $status['soroban'] = ['status' => 'unreachable', 'critical' => true, 'note' => 'CRITICAL — insurance payments are blocked'];
+    }
+
+    // Overall system status — database AND Stellar are both critical
+    $systemOk = $status['database']['status'] === 'ok'
+             && $status['stellar']['status'] === 'ok';
+
+    return response()->json([
+        'system'   => $systemOk ? 'operational' : 'degraded',
+        'message'  => $systemOk
+            ? 'Hospital system is fully operational'
+            : 'System degraded — check critical services',
+        'services' => $status,
+    ], $systemOk ? 200 : 503);
 });
 
 // Public logo endpoint (no auth required)
@@ -1179,14 +1234,16 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // ─── Decentralized HMS: IPFS + Stellar + Soroban ────────────────────────────
+// All routes below require Stellar to be reachable.
+// If Stellar is down, these endpoints return 503 — by design.
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\IpfsController;
 use App\Http\Controllers\StellarController;
 use App\Http\Controllers\SorobanController;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'stellar'])->group(function () {
 
-    // Medical Records
+    // Medical Records — requires IPFS + Stellar (CID anchoring)
     Route::post('/records/create',       [MedicalRecordController::class, 'create']);
     Route::get('/records/{patient_id}',  [MedicalRecordController::class, 'getByPatient']);
     Route::post('/records/upload-ipfs',  [MedicalRecordController::class, 'uploadFile']);
@@ -1208,7 +1265,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // ─── Fiat → Stellar Bridge ───────────────────────────────────────────────────
 use App\Http\Controllers\BridgeController;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'stellar'])->group(function () {
     Route::post('/bridge/payment/{payment_id}', [BridgeController::class, 'bridgePayment']);
     Route::get('/bridge/rate',                  [BridgeController::class, 'getRate']);
     Route::get('/bridge/convert',               [BridgeController::class, 'convert']);

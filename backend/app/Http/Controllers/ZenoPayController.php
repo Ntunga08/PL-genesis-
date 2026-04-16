@@ -383,18 +383,15 @@ class ZenoPayController extends Controller
                 $payment->save();
 
                 // ── Bridge fiat payment to Stellar blockchain ──────────────
-                try {
-                    $bridge = app(FiatToStellarBridgeService::class);
-                    $bridgeResult = $bridge->bridgePayment($payment, [
-                        'insurance_number' => $data['metadata']['insurance_number'] ?? null,
-                        'doctor_approved'  => $data['metadata']['doctor_approved'] ?? false,
-                        'cid'              => $data['metadata']['cid'] ?? null,
-                    ]);
-                    Log::info('ZenoPay: fiat→Stellar bridge completed', $bridgeResult);
-                } catch (\Throwable $e) {
-                    // Bridge failure must NOT block the fiat payment confirmation
-                    Log::error('ZenoPay: fiat→Stellar bridge failed', ['error' => $e->getMessage()]);
-                }
+                // Stellar is a hard dependency — if this fails, the payment
+                // is rolled back and the patient must retry.
+                $bridge = app(FiatToStellarBridgeService::class);
+                $bridgeResult = $bridge->bridgePayment($payment, [
+                    'insurance_number' => $data['metadata']['insurance_number'] ?? null,
+                    'doctor_approved'  => $data['metadata']['doctor_approved'] ?? false,
+                    'cid'              => $data['metadata']['cid'] ?? null,
+                ]);
+                Log::info('ZenoPay: fiat→Stellar bridge completed', $bridgeResult);
                 // ───────────────────────────────────────────────────────────
 
                 // Update invoice
