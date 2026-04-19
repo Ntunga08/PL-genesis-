@@ -9,7 +9,6 @@ backend/vendor/
 backend/.env
 
 # Build output
-dist/
 dist-ssr/
 *.local
 
